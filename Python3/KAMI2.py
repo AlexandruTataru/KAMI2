@@ -10,7 +10,7 @@ BOARD_SIZE_X = move_along_x * 10
 BOARD_SIZE_Y = TRIANGLE_SIZE * 14
 
 print('Available colors are:')
-print('1. Red\n2. Green\n3. Blue\n4. Yellow')
+print('1. Red\n2. Green\n3. Blue\n4. Yellow\nu. Undraw')
 
 currentColor = '2'
 
@@ -106,4 +106,7 @@ while True:
     for triangle in triangles:
         vertices = triangle.getPoints()
         if PointInTriangle(clickedPoint, vertices[0], vertices[1], vertices[2]):
-            triangle.setFill(getColor())
+            if currentColor == 'u':
+                triangle.undraw()
+            else:
+                triangle.setFill(getColor())
