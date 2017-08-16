@@ -1,69 +1,114 @@
 from graphics import *
-import random
-import math
 from pynput import keyboard
+from enum import Enum
+import math
+import random
 
-TRIANGLE_SIZE = 80
+class ORIENTATION(Enum):
+    LEFT = 1
+    RIGHT = 2
+    UNKNOWN = 3
+
+# Board set-up parameters
+TRIANGLE_SIZE = 40
 move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
-
 BOARD_SIZE_X = move_along_x * 10
 BOARD_SIZE_Y = TRIANGLE_SIZE * 14
-
-print('Available colors are:')
-print('1. Red\n2. Green\n3. Blue\n4. Yellow\nu. Undraw')
-
-currentColor = '2'
-
 FOLDING_COLOR = color_rgb(50, 50, 50)
+
+print('Available actions are:')
+print('1. Color red\n2. Color green\n3. Color blue\n4. Color yellow\nu. Undraw\ns. Start processing')
+
+BOARD_STARTING_COLOR_SELECTION = '3'
+
+currentAction = BOARD_STARTING_COLOR_SELECTION
 
 def getColor():
     rand_shade = random.randrange(30, 100, 20)
     color = color_rgb(0, 0, 0)
-    if currentColor == '1':
+    if currentAction == '1':
         color = color_rgb(255, rand_shade, rand_shade)
-    elif currentColor == '2':
+    elif currentAction == '2':
         color = color_rgb(rand_shade, 255, rand_shade)
-    elif currentColor == '3':
+    elif currentAction == '3':
         color = color_rgb(rand_shade, rand_shade, 255)
-    elif currentColor == '4':
+    elif currentAction == '4':
         color = color_rgb(255, 255, rand_shade)
 
     return color
 
 win = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
 
+class Kami2Triangle:
+
+    def __init__(self, p1, p2, p3, color):
+        vertices = [p1, p2, p3]
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.triangle = Polygon(vertices)
+        self.hasBeenMarked = False
+        self.color = color
+
+        self.triangle.setFill(getColor()) # artistic color
+        self.triangle.setOutline(FOLDING_COLOR)
+        self.triangle.setWidth(1)
+
+    def draw(self, window):
+        self.triangle.draw(window)
+
+    def isPointInside(self, pt):
+        b1 = sign(pt, self.p1, self.p2) < 0.0;
+        b2 = sign(pt, self.p2, self.p3) < 0.0;
+        b3 = sign(pt, self.p3, self.p1) < 0.0;
+
+        return ((b1 == b2) and (b2 == b3));
+
+    def setArtisticColor(self, color):
+        self.triangle.setFill(color)
+
+    def setInternalColor(self, color):
+        self.color = color
+
+    def getOrientation(self):
+        if self.p2.x > self.p1.x:
+            return ORIENTATION.RIGHT
+        elif self.p2.x < self.p1.x:
+            return ORIENTATION.LEFT
+        
+        return ORIENTATION.UNKNOWN
+
+    def getCenterPoint(self):
+        x = 0
+        y = self.p1.y + TRIANGLE_SIZE/2
+        if triangle.getOrientation() == ORIENTATION.LEFT:
+            x = self.p1.x - 1.0/3.0 * move_along_x
+        elif triangle.getOrientation() == ORIENTATION.RIGHT:
+            x = self.p1.x + 1.0/3.0 * move_along_x
+        return Point(x, y)
+
+def startToProcessTheBoard():
+    print('Board has been processed')
+    return
+
 def on_press(key):
-    try: k = key.char # single-char keys
-    except: k = key.name # other keys
-    global currentColor
-    currentColor = k
+    global currentAction
+    currentAction = key.char
+    if currentAction == 's':
+        startToProcessTheBoard()
 
 lis = keyboard.Listener(on_press=on_press)
-lis.start() # start to listen on a separate thread
-#lis.join() # no this if main thread is polling self.keys
+lis.start()
 
 def sign(p1, p2, p3):
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-
-def PointInTriangle(pt, v1, v2, v3):
-    b1 = sign(pt, v1, v2) < 0.0;
-    b2 = sign(pt, v2, v3) < 0.0;
-    b3 = sign(pt, v3, v1) < 0.0;
-
-    return ((b1 == b2) and (b2 == b3));
 
 def drawRightTriangle(sp):
     p1 = sp
     p2 = Point(sp.x + move_along_x, sp.y + TRIANGLE_SIZE/2)
     p3 = Point(sp.x, sp.y + TRIANGLE_SIZE)
 
-    vertices = [p1, p2, p3]
-
-    triangle = Polygon(vertices)
-
-    triangle.setFill(getColor())
-    triangle.setOutline(FOLDING_COLOR)
-    triangle.setWidth(1)
+    triangle = Kami2Triangle(p1, p2, p3, currentAction)
     triangle.draw(win)
     
     return triangle
@@ -73,13 +118,7 @@ def drawLeftTriangle(sp):
     p2 = Point(sp.x - move_along_x, sp.y + TRIANGLE_SIZE/2)
     p3 = Point(sp.x, sp.y + TRIANGLE_SIZE)
 
-    vertices = [p1, p2, p3]
-
-    triangle = Polygon(vertices)
-    
-    triangle.setFill(getColor())
-    triangle.setOutline(FOLDING_COLOR)
-    triangle.setWidth(1)
+    triangle = Kami2Triangle(p1, p2, p3, currentAction)
     triangle.draw(win)
 
     return triangle
@@ -104,9 +143,30 @@ while startPosY < BOARD_SIZE_Y - TRIANGLE_SIZE:
 while True:
     clickedPoint = win.getMouse()
     for triangle in triangles:
-        vertices = triangle.getPoints()
-        if PointInTriangle(clickedPoint, vertices[0], vertices[1], vertices[2]):
-            if currentColor == 'u':
+        if triangle.isPointInside(clickedPoint):
+            if currentAction == 'u':
+                triangles.remove(triangle)
                 triangle.undraw()
             else:
-                triangle.setFill(getColor())
+                triangle.setArtisticColor(getColor())
+                triangle.setInternalColor(currentAction)
+                centerPoint = triangle.getCenterPoint()
+                n1 = centerPoint
+                n2 = centerPoint
+                n3 = centerPoint
+                if triangle.getOrientation() == ORIENTATION.LEFT:
+                    n1 = Point(centerPoint.x + 2 * (1.0/3.0 * move_along_x), centerPoint.y)
+                    n2 = Point(centerPoint.x - 1.0/3.0 * move_along_x, centerPoint.y + TRIANGLE_SIZE/2)
+                    n3 = Point(centerPoint.x - 1.0/3.0 * move_along_x, centerPoint.y - TRIANGLE_SIZE/2)
+                elif triangle.getOrientation() == ORIENTATION.RIGHT:
+                    n1 = Point(centerPoint.x + 1.0/3.0 * move_along_x, centerPoint.y - TRIANGLE_SIZE/2)
+                    n2 = Point(centerPoint.x + 1.0/3.0 * move_along_x, centerPoint.y + TRIANGLE_SIZE/2)
+                    n3 = Point(centerPoint.x - 2 * (1.0/3.0 * move_along_x), centerPoint.y)
+
+                for neighboardTriangle in triangles:
+                    if neighboardTriangle.isPointInside(n1):
+                        neighboardTriangle.setArtisticColor(color_rgb(255, 255, 255))
+                    elif neighboardTriangle.isPointInside(n2):
+                        neighboardTriangle.setArtisticColor(color_rgb(255, 255, 255))
+                    elif neighboardTriangle.isPointInside(n3):
+                        neighboardTriangle.setArtisticColor(color_rgb(255, 255, 255))
