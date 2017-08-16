@@ -17,12 +17,23 @@ BOARD_SIZE_X = move_along_x * 10
 BOARD_SIZE_Y = TRIANGLE_SIZE * 14
 FOLDING_COLOR = color_rgb(50, 50, 50)
 
+window = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
+
 print('Available actions are:')
 print('1. Color red\n2. Color green\n3. Color blue\n4. Color yellow\nu. Undraw\ns. Start processing')
+
+groupIdx = [0, 0, 0, 0, 0]
 
 BOARD_STARTING_COLOR_SELECTION = '3'
 
 currentAction = BOARD_STARTING_COLOR_SELECTION
+
+def on_press(key):
+    global currentAction
+    currentAction = key.char
+
+lis = keyboard.Listener(on_press=on_press)
+lis.start()
 
 triangles = []
 
@@ -31,14 +42,15 @@ def getNeighbors(triangle):
     n1 = centerPoint
     n2 = centerPoint
     n3 = centerPoint
+    sign = 0;
     if triangle.getOrientation() == ORIENTATION.LEFT:
-        n1 = Point(centerPoint.x + 2 * (1.0/3.0 * move_along_x), centerPoint.y)
-        n2 = Point(centerPoint.x - 1.0/3.0 * move_along_x, centerPoint.y + TRIANGLE_SIZE/2)
-        n3 = Point(centerPoint.x - 1.0/3.0 * move_along_x, centerPoint.y - TRIANGLE_SIZE/2)
+        sign = 1
     elif triangle.getOrientation() == ORIENTATION.RIGHT:
-        n1 = Point(centerPoint.x + 1.0/3.0 * move_along_x, centerPoint.y - TRIANGLE_SIZE/2)
-        n2 = Point(centerPoint.x + 1.0/3.0 * move_along_x, centerPoint.y + TRIANGLE_SIZE/2)
-        n3 = Point(centerPoint.x - 2 * (1.0/3.0 * move_along_x), centerPoint.y)
+        sign = -1
+
+    n1 = Point(centerPoint.x + 2 * (1.0/3.0 * move_along_x) * sign, centerPoint.y)
+    n2 = Point(centerPoint.x - 1.0/3.0 * move_along_x * sign, centerPoint.y + TRIANGLE_SIZE/2 * sign)
+    n3 = Point(centerPoint.x - 1.0/3.0 * move_along_x * sign, centerPoint.y - TRIANGLE_SIZE/2 * sign)
 
     neighbors = []
     for neighboardTriangle in triangles:
@@ -61,11 +73,10 @@ def getColor():
 
     return color
 
-win = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
-
 class Kami2Triangle:
 
     def __init__(self, p1, p2, p3, color):
+        self.group = None
         vertices = [p1, p2, p3]
         self.p1 = p1
         self.p2 = p2
@@ -77,6 +88,10 @@ class Kami2Triangle:
         self.triangle.setFill(getColor()) # artistic color
         self.triangle.setOutline(FOLDING_COLOR)
         self.triangle.setWidth(1)
+
+    def getColorGroup(self):
+        colorGroups = ['None', 'Red', 'Green', 'Blue', 'Yellow']
+        return colorGroups[int(self.color)]
 
     def draw(self, window):
         self.triangle.draw(window)
@@ -116,12 +131,18 @@ class Kami2Triangle:
             x = self.p1.x + 1.0/3.0 * move_along_x
         return Point(x, y)
 
+def makeConnection(group1, group2):
+	return 1
+
 def startToProcessTheBoard():
     print('Board has been processed')
 
     for triangle in triangles:
         if triangle.hasBeenMarked == False:
             internalColor = triangle.getInternalColor()
+            groupIdx[int(internalColor)] = groupIdx[int(internalColor)] + 1
+            groupId = triangle.getColorGroup() + str(groupIdx[int(internalColor)])
+            triangle.group = groupId
             q = [triangle]
             while len(q) > 0:
                 currTriangle = q.pop()
@@ -131,61 +152,50 @@ def startToProcessTheBoard():
                     for neighbor in neighbors:
                         if internalColor == neighbor.getInternalColor():
                             q.append(neighbor)
+                        elif neighbor.hasBeenMarked == True:
+                            makeConnection(currTriangle.group, neighbor.group)
                     currTriangle.hasBeenMarked = True
                     time.sleep(0.05)
-
-def on_press(key):
-    global currentAction
-    currentAction = key.char
-
-lis = keyboard.Listener(on_press=on_press)
-lis.start()
 
 def sign(p1, p2, p3):
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 
-def drawRightTriangle(sp):
-    p1 = sp
-    p2 = Point(sp.x + move_along_x, sp.y + TRIANGLE_SIZE/2)
-    p3 = Point(sp.x, sp.y + TRIANGLE_SIZE)
+def drawTriangle(startingPoint, orientation):
+    p1 = startingPoint
+    if orientation == ORIENTATION.RIGHT:
+        p2 = Point(startingPoint.x + move_along_x, startingPoint.y + TRIANGLE_SIZE/2)
+    else:
+        p2 = Point(startingPoint.x - move_along_x, startingPoint.y + TRIANGLE_SIZE/2)
+    p3 = Point(startingPoint.x, startingPoint.y + TRIANGLE_SIZE)
 
     triangle = Kami2Triangle(p1, p2, p3, currentAction)
-    triangle.draw(win)
+    triangle.draw(window)
     
-    return triangle
-
-def drawLeftTriangle(sp):
-    p1 = sp
-    p2 = Point(sp.x - move_along_x, sp.y + TRIANGLE_SIZE/2)
-    p3 = Point(sp.x, sp.y + TRIANGLE_SIZE)
-
-    triangle = Kami2Triangle(p1, p2, p3, currentAction)
-    triangle.draw(win)
-
     return triangle
 
 startPosY = 0
 while startPosY < BOARD_SIZE_Y - TRIANGLE_SIZE:
     startPosX = 0
     while startPosX + move_along_x <= BOARD_SIZE_X:
-        triangles.append(drawRightTriangle(Point(startPosX, startPosY)))
-        triangles.append(drawLeftTriangle(Point(startPosX + move_along_x*2, startPosY)))
+        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
+        triangles.append(drawTriangle(Point(startPosX + move_along_x*2, startPosY), ORIENTATION.LEFT))
         startPosX = startPosX + move_along_x*2
     startPosX = move_along_x
     startPosY = startPosY + TRIANGLE_SIZE/2
     while startPosX <= BOARD_SIZE_X:
-        triangles.append(drawLeftTriangle(Point(startPosX, startPosY)))
-        triangles.append(drawRightTriangle(Point(startPosX, startPosY)))
+        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT))
+        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
         startPosX = startPosX + move_along_x*2
     startPosY = startPosY + TRIANGLE_SIZE/2
 
 while True:
-    clickedPoint = win.getMouse()
+    clickedPoint = window.getMouse()
     if currentAction == 's':
         startToProcessTheBoard()
     else:
         for triangle in triangles:
             if triangle.isPointInside(clickedPoint):
+                print(triangle.getInternalColor())
                 if currentAction == 'u':
                     triangles.remove(triangle)
                     triangle.undraw()
