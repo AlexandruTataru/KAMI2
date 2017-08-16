@@ -3,7 +3,7 @@ from pynput import keyboard
 from enum import Enum
 import math
 import random
-from multiprocessing import Queue
+import time
 
 class ORIENTATION(Enum):
     LEFT = 1
@@ -27,14 +27,10 @@ currentAction = BOARD_STARTING_COLOR_SELECTION
 triangles = []
 
 def getNeighbors(triangle):
-    print('a1');
-    print(triangle.getInternalColor())
     centerPoint = triangle.getCenterPoint()
-    print('a2');
     n1 = centerPoint
     n2 = centerPoint
     n3 = centerPoint
-    print('a3');
     if triangle.getOrientation() == ORIENTATION.LEFT:
         n1 = Point(centerPoint.x + 2 * (1.0/3.0 * move_along_x), centerPoint.y)
         n2 = Point(centerPoint.x - 1.0/3.0 * move_along_x, centerPoint.y + TRIANGLE_SIZE/2)
@@ -105,28 +101,19 @@ class Kami2Triangle:
         return self.color
 
     def getOrientation(self):
-        print('o1')
         if self.p2.x > self.p1.x:
-            print('o2')
             return ORIENTATION.RIGHT
         elif self.p2.x < self.p1.x:
-            print('o3')
             return ORIENTATION.LEFT
-        print('o4')
         return ORIENTATION.UNKNOWN
 
     def getCenterPoint(self):
-        print('c1')
         x = 0
         y = self.p1.y + TRIANGLE_SIZE/2
-        print('c2')
         if self.getOrientation() == ORIENTATION.LEFT:
-            print('c3')
             x = self.p1.x - 1.0/3.0 * move_along_x
         elif self.getOrientation() == ORIENTATION.RIGHT:
-            print('c4')
             x = self.p1.x + 1.0/3.0 * move_along_x
-        print('c5')
         return Point(x, y)
 
 def startToProcessTheBoard():
@@ -145,6 +132,7 @@ def startToProcessTheBoard():
                         if internalColor == neighbor.getInternalColor():
                             q.append(neighbor)
                     currTriangle.hasBeenMarked = True
+                    time.sleep(0.05)
 
 def on_press(key):
     global currentAction
