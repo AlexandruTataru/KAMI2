@@ -3,7 +3,6 @@ from pynput import keyboard
 from enum import Enum
 import math
 import random
-import time
 
 class ORIENTATION(Enum):
     LEFT = 1
@@ -13,8 +12,8 @@ class ORIENTATION(Enum):
 # Board set-up parameters
 TRIANGLE_SIZE = 40
 move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
-BOARD_SIZE_X = move_along_x * 10
-BOARD_SIZE_Y = TRIANGLE_SIZE * 14
+BOARD_SIZE_X = move_along_x * 8
+BOARD_SIZE_Y = TRIANGLE_SIZE * 8
 FOLDING_COLOR = color_rgb(50, 50, 50)
 
 window = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
@@ -131,12 +130,14 @@ class Kami2Triangle:
             x = self.p1.x + 1.0/3.0 * move_along_x
         return Point(x, y)
 
+availableConnections = []
+
 def makeConnection(group1, group2):
-	return 1
+    connection = str(group1) + '-' + str(group2)
+    if connection not in availableConnections:
+	    availableConnections.append(connection)
 
 def startToProcessTheBoard():
-    print('Board has been processed')
-
     for triangle in triangles:
         if triangle.hasBeenMarked == False:
             internalColor = triangle.getInternalColor()
@@ -146,16 +147,18 @@ def startToProcessTheBoard():
             q = [triangle]
             while len(q) > 0:
                 currTriangle = q.pop()
-                currTriangle.setArtisticColor(color_rgb(255, 255, 255))
+                currTriangle.group = groupId
                 if currTriangle.hasBeenMarked == False:
                     neighbors = getNeighbors(currTriangle)
                     for neighbor in neighbors:
                         if internalColor == neighbor.getInternalColor():
                             q.append(neighbor)
-                        elif neighbor.hasBeenMarked == True:
+                        elif neighbor.hasBeenMarked == True and neighbor.group != None:
                             makeConnection(currTriangle.group, neighbor.group)
                     currTriangle.hasBeenMarked = True
-                    time.sleep(0.05)
+
+    for conn in availableConnections:
+        print(conn)
 
 def sign(p1, p2, p3):
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
@@ -195,7 +198,6 @@ while True:
     else:
         for triangle in triangles:
             if triangle.isPointInside(clickedPoint):
-                print(triangle.getInternalColor())
                 if currentAction == 'u':
                     triangles.remove(triangle)
                     triangle.undraw()
