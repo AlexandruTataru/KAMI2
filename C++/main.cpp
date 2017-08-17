@@ -29,20 +29,76 @@ string values[] =
 	"Red4 - Blue5"
 };
 
+string values1[] = 
+{
+	"Red1 - Blue1",
+	"Blue2 - Red1",
+	"Yellow1 - Blue2",
+	"Blue3 - Yellow1"
+};
+
+string values2[] =
+{
+	"Blue1 - Green1",
+	"Green2 - Blue1",
+	"Blue2 - Green2",
+	"Green3 - Blue2",
+	"Green4 - Blue2",
+	"Red1 - Blue1",
+	"Red1 - Green1",
+	"Red1 - Blue2",
+	"Blue3 - Green1",
+	"Blue3 - Red1",
+	"Green5 - Blue2",
+	"Green5 - Blue3",
+	"Red2 - Blue2",
+	"Green6 - Blue2",
+	"Green6 - Blue3",
+	"Red3 - Blue3",
+	"Green7 - Blue3",
+	"Red4 - Blue3",
+	"Green8 - Blue3",
+	"Green8 - Red4",
+	"Green9 - Blue3",
+	"Green10 - Red4",
+	"Green10 - Blue3"
+};
+
 struct Node
 {
 	string name;
 	string tag;
 	vector<Node*> children;
 	int weight = 0;
-	string childTag2Remove;
 };
 
 map<string, Node*> tags2Nodes;
 
+bool is_only_one()
+{
+	int count = 0;
+	std::string key;
+	for (const auto & pair : tags2Nodes)
+	{
+		if (key.empty())
+		{
+			key = pair.second->name;
+		}
+		else
+		{
+			if (pair.second->name != key)
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
 int main()
 {
-	for (string entry : values)
+	for (string entry : values2)
 	{
 		std::regex r("(\\w+)(\\d+)\\s-\\s(\\w+)(\\d+)");
 		std::smatch m;
@@ -86,9 +142,9 @@ int main()
 			second->children.push_back(first);
 	}
 
-	while (!tags2Nodes.empty())
+	while (!is_only_one())
 	{
-		for (const auto & pair : tags2Nodes)
+		/*for (const auto & pair : tags2Nodes)
 		{
 			std::cout << "(" << pair.second->name << ", " << pair.second->tag << ": ";
 			for (int i = 0; i < (int)pair.second->children.size() - 1; ++i)
@@ -99,12 +155,11 @@ int main()
 			{
 				std::cout << "(" << pair.second->children[pair.second->children.size() - 1]->name << ", " << pair.second->children[pair.second->children.size() - 1]->tag << ")" << std::endl;
 			}
-		}
+		}*/
 
 		for (auto& node : tags2Nodes)
 		{
 			node.second->weight = 0;
-			node.second->childTag2Remove = "";
 		}
 
 		// Go over every node and assign a note
@@ -127,16 +182,16 @@ int main()
 			node.second->weight = chance;
 		}
 
-		Node* toBeRemoved = nullptr;
+		Node* currentNode = nullptr;
 		for (auto& node : tags2Nodes)
 		{
-			if (toBeRemoved == nullptr) toBeRemoved = node.second;
-			else if (node.second->weight > toBeRemoved->weight)
-				toBeRemoved = node.second;
+			if (currentNode == nullptr) currentNode = node.second;
+			else if (node.second->weight > currentNode->weight)
+				currentNode = node.second;
 		}
 
 		map<string, int> prio;
-		for (auto& n : toBeRemoved->children)
+		for (auto& n : currentNode->children)
 		{
 			prio[n->name] += n->weight;
 		}
@@ -150,38 +205,37 @@ int main()
 				tag = p.first;
 			}
 		}
-		toBeRemoved->childTag2Remove = tag;
-		cout << "We need to eliminated node tagged " << toBeRemoved->tag << " by converting to " << tag << endl;
+		cout << "We need to eliminated node tagged " << currentNode->tag << " by converting to " << tag << endl;
 
-		vector<Node*> childrenToAdopt;
-		for (auto& node : toBeRemoved->children)
+		vector<Node*> children;
+		for (auto& child : currentNode->children)
 		{
-			if (node->name == toBeRemoved->childTag2Remove)
+			if (child->name == tag)
 			{
-				for (auto& childOfChild : node->children)
-				{
-					if (std::find(toBeRemoved->children.begin(), toBeRemoved->children.end(), childOfChild) == toBeRemoved->children.end())
-						childrenToAdopt.push_back(childOfChild);
-					if (std::find(childOfChild->children.begin(), childOfChild->children.end(), toBeRemoved) == childOfChild->children.end() && childOfChild != toBeRemoved)
-						childOfChild->children.push_back(toBeRemoved);
-					//childOfChild->children.erase(std::find(childOfChild->children.begin(), childOfChild->children.end(), node));
-				}
-
-				for (auto& taggedNodes : tags2Nodes)
-				{
-					if (taggedNodes.second == toBeRemoved) continue;
-					if (std::find(taggedNodes.second->children.begin(), taggedNodes.second->children.end(), node) != taggedNodes.second->children.end())
-					{
-						taggedNodes.second->children.erase(std::find(taggedNodes.second->children.begin(), taggedNodes.second->children.end(), node));
-					}
-				}
-
-				tags2Nodes.erase(node->tag);
+				children.push_back(child);
 			}
 		}
-		toBeRemoved->children.insert(toBeRemoved->children.end(), childrenToAdopt.begin(), childrenToAdopt.end());
-		//cout << "We shall convert " << toBeRemoved->tag << " to " << toBeRemoved->childTag2Remove << endl;
-		toBeRemoved->name = toBeRemoved->childTag2Remove;
+
+		for (auto& child : children)
+		{
+			for (auto& relativ : child->children)
+			{
+				//if (find(relativ->children.begin(), relativ->children.end(), child) != relativ->children.end())
+				relativ->children.erase(find(relativ->children.begin(), relativ->children.end(), child));
+			}
+			for (auto& relativ : child->children)
+			{
+				if (relativ == currentNode) continue;
+				if (std::find(currentNode->children.begin(), currentNode->children.end(), relativ) == currentNode->children.end())
+				{
+					currentNode->children.push_back(relativ);
+					relativ->children.push_back(currentNode);
+				}
+			}
+			tags2Nodes.erase(child->tag);
+		}
+
+		currentNode->name = tag;
 	}
 
 	return 0;
