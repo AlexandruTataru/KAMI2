@@ -183,11 +183,31 @@ int main()
 		}
 
 		Node* currentNode = nullptr;
+		int maxWeight = 0;
 		for (auto& node : tags2Nodes)
 		{
-			if (currentNode == nullptr) currentNode = node.second;
-			else if (node.second->weight > currentNode->weight)
-				currentNode = node.second;
+			map<string, int> prio;
+			for (auto& n : node.second->children)
+			{
+				prio[n->name] += n->weight;
+			}
+
+			int hiddenWeight = 0;
+			for (auto& p : prio)
+			{
+				if (p.second > maxWeight)
+				{
+					maxWeight = p.second;
+					currentNode = node.second;
+				}
+				else if (p.second == maxWeight)
+				{
+					if (node.second->weight > currentNode->weight)
+					{
+						currentNode = node.second;
+					}
+				}
+			}
 		}
 
 		map<string, int> prio;
@@ -239,4 +259,5 @@ int main()
 	}
 
 	return 0;
+}
 }
