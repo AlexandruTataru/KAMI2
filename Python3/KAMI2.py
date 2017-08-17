@@ -11,10 +11,14 @@ class ORIENTATION(Enum):
 
 # Board set-up parameters
 TRIANGLE_SIZE = 40
+NR_TRIANGLES_HORIZONTAL = 10
+NR_TRIANGLES_VERTICAL = 14
+
 move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
-BOARD_SIZE_X = move_along_x * 8
-BOARD_SIZE_Y = TRIANGLE_SIZE * 8
+BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL
+BOARD_SIZE_Y = TRIANGLE_SIZE * NR_TRIANGLES_VERTICAL
 FOLDING_COLOR = color_rgb(50, 50, 50)
+OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
 
 window = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
 
@@ -133,9 +137,14 @@ class Kami2Triangle:
 availableConnections = []
 
 def makeConnection(group1, group2):
-    connection = str(group1) + '-' + str(group2)
+    connection = str(group1) + ' - ' + str(group2)
     if connection not in availableConnections:
 	    availableConnections.append(connection)
+
+def writeDataToFile(data):
+    file = open(OUTPUT_FILE, "w")
+    file.write(data)
+    file.close()
 
 def startToProcessTheBoard():
     for triangle in triangles:
@@ -157,8 +166,10 @@ def startToProcessTheBoard():
                             makeConnection(currTriangle.group, neighbor.group)
                     currTriangle.hasBeenMarked = True
 
+    data = ''
     for conn in availableConnections:
-        print(conn)
+        data = data + conn + '\n'
+    writeDataToFile(data)
 
 def sign(p1, p2, p3):
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
@@ -177,19 +188,25 @@ def drawTriangle(startingPoint, orientation):
     return triangle
 
 startPosY = 0
-while startPosY < BOARD_SIZE_Y - TRIANGLE_SIZE:
-    startPosX = 0
-    while startPosX + move_along_x <= BOARD_SIZE_X:
-        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
-        triangles.append(drawTriangle(Point(startPosX + move_along_x*2, startPosY), ORIENTATION.LEFT))
-        startPosX = startPosX + move_along_x*2
+
+headerPosX = 0
+while headerPosX <= BOARD_SIZE_X - move_along_x * 2:
+    triangles.append(drawTriangle(Point(headerPosX, startPosY - TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
+    triangles.append(drawTriangle(Point(headerPosX + move_along_x * 2, startPosY - TRIANGLE_SIZE/2), ORIENTATION.LEFT))
+    headerPosX += move_along_x * 2
+
+while startPosY <= BOARD_SIZE_Y - TRIANGLE_SIZE:
     startPosX = move_along_x
-    startPosY = startPosY + TRIANGLE_SIZE/2
-    while startPosX <= BOARD_SIZE_X:
+    while startPosX <= BOARD_SIZE_X - move_along_x:
         triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT))
         triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
-        startPosX = startPosX + move_along_x*2
-    startPosY = startPosY + TRIANGLE_SIZE/2
+        startPosX += move_along_x * 2
+    startPosX = 0
+    while startPosX <= BOARD_SIZE_X - move_along_x * 2:
+        triangles.append(drawTriangle(Point(startPosX, startPosY + TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
+        triangles.append(drawTriangle(Point(startPosX + move_along_x * 2, startPosY + TRIANGLE_SIZE/2), ORIENTATION.LEFT))
+        startPosX += move_along_x * 2
+    startPosY += TRIANGLE_SIZE
 
 while True:
     clickedPoint = window.getMouse()
