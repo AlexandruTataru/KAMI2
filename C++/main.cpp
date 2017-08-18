@@ -7,98 +7,59 @@ using namespace std;
 
 string values[] =
 {
-	"Blue1 - Red1",
-	"Yellow1 - Blue1",
-	"Yellow2 - Red1",
-	"Yellow2 - Blue1",
-	"Red2 - Blue1",
-	"Red2 - Yellow2",
-	"Red2 - Yellow1",
-	"Blue2 - Red1",
-	"Blue2 - Yellow2",
-	"Blue3 - Yellow1",
-	"Blue3 - Red2",
-	"Blue3 - Yellow2",
-	"Red3 - Yellow2",
-	"Yellow3 - Red2",
-	"Blue4 - Red2",
-	"Blue5 - Yellow2",
-	"Yellow4 - Blue3",
-	"Red4 - Yellow2",
-	"Red4 - Blue3",
-	"Red4 - Blue5"
-};
-
-string values1[] = 
-{
-	"Red1 - Blue1",
-	"Blue2 - Red1",
-	"Yellow1 - Blue2",
-	"Blue3 - Yellow1"
-};
-
-string values2[] =
-{
-	"Blue1 - Green1",
-	"Green2 - Blue1",
-	"Blue2 - Green2",
-	"Green3 - Blue2",
-	"Green4 - Blue2",
-	"Red1 - Blue1",
-	"Red1 - Green1",
-	"Red1 - Blue2",
-	"Blue3 - Green1",
-	"Blue3 - Red1",
-	"Green5 - Blue2",
-	"Green5 - Blue3",
-	"Red2 - Blue2",
-	"Green6 - Blue2",
-	"Green6 - Blue3",
-	"Red3 - Blue3",
-	"Green7 - Blue3",
-	"Red4 - Blue3",
-	"Green8 - Blue3",
-	"Green8 - Red4",
-	"Green9 - Blue3",
-	"Green10 - Red4",
-	"Green10 - Blue3"
+	"LightBlue1 - DarkRed1",
+	"PaperGrey1 - LightBlue1",
+	"LightBlue2 - PaperGrey1",
+	"DarkRed2 - LightBlue2",
+	"PaperGrey2 - DarkRed1",
+	"LightBlue3 - DarkRed1",
+	"LightBlue4 - PaperGrey2"
 };
 
 struct Node
 {
-	string name;
-	string tag;
-	vector<Node*> children;
-	int weight = 0;
+	string visibleColor;
+	string hiddenTag;
+	int simpleWeight;
+	vector<Node*> neighbors;
 };
 
 map<string, Node*> tags2Nodes;
 
-bool is_only_one()
+bool colorIsUniform()
 {
 	int count = 0;
 	std::string key;
 	for (const auto & pair : tags2Nodes)
 	{
 		if (key.empty())
-		{
-			key = pair.second->name;
-		}
+			key = pair.second->visibleColor;
 		else
-		{
-			if (pair.second->name != key)
-			{
+			if (pair.second->visibleColor != key)
 				return false;
-			}
-		}
 	}
-
 	return true;
 }
 
-int main()
+void displayGraph()
 {
-	for (string entry : values2)
+	for (const auto & pair : tags2Nodes)
+	{
+		std::cout << "(" << pair.second->visibleColor << ", " << pair.second->hiddenTag << ": ";
+		for (int i = 0; i < (int)pair.second->neighbors.size() - 1; ++i)
+		{
+			std::cout << "(" << pair.second->neighbors[i]->visibleColor << ", " << pair.second->neighbors[i]->hiddenTag << "), ";
+		}
+		if ((int)pair.second->neighbors.size() - 1 >= 0)
+		{
+			std::cout << "(" << pair.second->neighbors[pair.second->neighbors.size() - 1]->visibleColor << ", " << pair.second->neighbors[pair.second->neighbors.size() - 1]->hiddenTag << ")" << std::endl;
+		}
+	}
+}
+
+void readInputDataAndCreateGraph()
+{
+	for (string entry : values)
 	{
 		std::regex r("(\\w+)(\\d+)\\s-\\s(\\w+)(\\d+)");
 		std::smatch m;
@@ -115,8 +76,8 @@ int main()
 		if (tags2Nodes.find(fTag) == tags2Nodes.end())
 		{
 			first = new Node();
-			first->name = fName;
-			first->tag = fTag;
+			first->visibleColor = fName;
+			first->hiddenTag = fTag;
 			tags2Nodes.insert(std::pair<string, Node*>(fTag, first));
 		}
 		else
@@ -127,8 +88,8 @@ int main()
 		if (tags2Nodes.find(sTag) == tags2Nodes.end())
 		{
 			second = new Node();
-			second->name = sName;
-			second->tag = sTag;
+			second->visibleColor = sName;
+			second->hiddenTag = sTag;
 			tags2Nodes.insert(std::pair<string, Node*>(sTag, second));
 		}
 		else
@@ -136,128 +97,127 @@ int main()
 			second = tags2Nodes.find(sTag)->second;
 		}
 
-		if(std::find(first->children.begin(), first->children.end(), second) == first->children.end())
-			first->children.push_back(second);
-		if (std::find(second->children.begin(), second->children.end(), first) == second->children.end())
-			second->children.push_back(first);
+		if (std::find(first->neighbors.begin(), first->neighbors.end(), second) == first->neighbors.end())
+			first->neighbors.push_back(second);
+		if (std::find(second->neighbors.begin(), second->neighbors.end(), first) == second->neighbors.end())
+			second->neighbors.push_back(first);
 	}
+}
 
-	while (!is_only_one())
+void assignSimpleWeightToTheNodes()
+{
+	for (auto& node : tags2Nodes)
 	{
-		/*for (const auto & pair : tags2Nodes)
-		{
-			std::cout << "(" << pair.second->name << ", " << pair.second->tag << ": ";
-			for (int i = 0; i < (int)pair.second->children.size() - 1; ++i)
-			{
-				std::cout << "(" << pair.second->children[i]->name << ", " << pair.second->children[i]->tag << "), ";
-			}
-			if ((int)pair.second->children.size() - 1 >= 0)
-			{
-				std::cout << "(" << pair.second->children[pair.second->children.size() - 1]->name << ", " << pair.second->children[pair.second->children.size() - 1]->tag << ")" << std::endl;
-			}
-		}*/
-
-		for (auto& node : tags2Nodes)
-		{
-			node.second->weight = 0;
-		}
-
-		// Go over every node and assign a note
-		for (auto& node : tags2Nodes)
-		{
-			map<string, int> prio;
-			for (auto& n : node.second->children)
-			{
-				prio[n->name] += 1;
-			}
-
-			int chance = 0;
-			string tag = "";
-			for (auto& p : prio)
-				if (p.second > chance)
-				{
-					chance = p.second;
-					tag = p.first;
-				}
-			node.second->weight = chance;
-		}
-
-		Node* currentNode = nullptr;
-		int maxWeight = 0;
-		for (auto& node : tags2Nodes)
-		{
-			map<string, int> prio;
-			for (auto& n : node.second->children)
-			{
-				prio[n->name] += n->weight;
-			}
-
-			int hiddenWeight = 0;
-			for (auto& p : prio)
-			{
-				if (p.second > maxWeight)
-				{
-					maxWeight = p.second;
-					currentNode = node.second;
-				}
-				else if (p.second == maxWeight)
-				{
-					if (node.second->weight > currentNode->weight)
-					{
-						currentNode = node.second;
-					}
-				}
-			}
-		}
-
 		map<string, int> prio;
-		for (auto& n : currentNode->children)
+		for (auto& n : node.second->neighbors)
+			prio[n->visibleColor] += 1;
+
+		int weight = 0;
+		for (auto& p : prio)
+			if (p.second > weight)
+				weight = p.second;
+		node.second->simpleWeight = weight;
+	}
+}
+
+Node* getMainNode()
+{
+	Node* currentNode = nullptr;
+	int maxWeight = 0;
+	for (auto& node : tags2Nodes)
+	{
+		map<string, int> prio;
+		for (auto& n : node.second->neighbors)
 		{
-			prio[n->name] += n->weight;
+			prio[n->visibleColor] += n->simpleWeight;
 		}
-		int chance = 0;
-		string tag = "";
+
+		int hiddenWeight = 0;
 		for (auto& p : prio)
 		{
-			if (p.second > chance)
+			if (p.second > maxWeight)
 			{
-				chance = p.second;
-				tag = p.first;
+				maxWeight = p.second;
+				currentNode = node.second;
 			}
-		}
-		cout << "We need to eliminated node tagged " << currentNode->tag << " by converting to " << tag << endl;
-
-		vector<Node*> children;
-		for (auto& child : currentNode->children)
-		{
-			if (child->name == tag)
+			else if (p.second == maxWeight)
 			{
-				children.push_back(child);
-			}
-		}
-
-		for (auto& child : children)
-		{
-			for (auto& relativ : child->children)
-			{
-				//if (find(relativ->children.begin(), relativ->children.end(), child) != relativ->children.end())
-				relativ->children.erase(find(relativ->children.begin(), relativ->children.end(), child));
-			}
-			for (auto& relativ : child->children)
-			{
-				if (relativ == currentNode) continue;
-				if (std::find(currentNode->children.begin(), currentNode->children.end(), relativ) == currentNode->children.end())
+				if (node.second->simpleWeight > currentNode->simpleWeight)
 				{
-					currentNode->children.push_back(relativ);
-					relativ->children.push_back(currentNode);
+					currentNode = node.second;
 				}
 			}
-			tags2Nodes.erase(child->tag);
 		}
+	}
+	return currentNode;
+}
 
-		currentNode->name = tag;
+string getNewColorForNode(const Node* currentNode)
+{
+	map<string, int> prio;
+	for (auto& n : currentNode->neighbors)
+	{
+		prio[n->visibleColor] += n->simpleWeight;
+	}
+	int chance = 0;
+	string tag = "";
+	for (auto& p : prio)
+	{
+		if (p.second > chance)
+		{
+			chance = p.second;
+			tag = p.first;
+		}
+	}
+
+	return tag;
+}
+
+void eraseNode(Node* currentNode, const string& tag)
+{
+	vector<Node*> children;
+	for (auto& child : currentNode->neighbors)
+	{
+		if (child->visibleColor == tag)
+		{
+			children.push_back(child);
+		}
+	}
+
+	for (auto& child : children)
+	{
+		for (auto& relativ : child->neighbors)
+		{
+			relativ->neighbors.erase(find(relativ->neighbors.begin(), relativ->neighbors.end(), child));
+		}
+		for (auto& relativ : child->neighbors)
+		{
+			if (relativ == currentNode) continue;
+			if (std::find(currentNode->neighbors.begin(), currentNode->neighbors.end(), relativ) == currentNode->neighbors.end())
+			{
+				currentNode->neighbors.push_back(relativ);
+				relativ->neighbors.push_back(currentNode);
+			}
+		}
+		tags2Nodes.erase(child->hiddenTag);
+	}
+	currentNode->visibleColor = tag;
+}
+
+int main()
+{
+	readInputDataAndCreateGraph();
+	while (!colorIsUniform())
+	{
+		for (auto& node : tags2Nodes)
+			node.second->simpleWeight = 0;
+
+		assignSimpleWeightToTheNodes();
+		Node* currentNode = getMainNode();
+		string newNodeColor = getNewColorForNode(currentNode);
+		cout << "We need to eliminated node tagged " << currentNode->hiddenTag << " by converting to " << newNodeColor << endl;
+		eraseNode(currentNode, newNodeColor);
 	}
 
 	return 0;
-}
 }
