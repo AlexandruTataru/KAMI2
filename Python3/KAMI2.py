@@ -10,7 +10,7 @@ class ORIENTATION(Enum):
     UNKNOWN = 3
 
 # Board set-up parameters
-TRIANGLE_SIZE = 60
+TRIANGLE_SIZE = 70
 NR_TRIANGLES_HORIZONTAL = 10
 NR_TRIANGLES_VERTICAL = 14
 
@@ -69,7 +69,7 @@ scanline += 20
 
 groupIdx = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-BOARD_STARTING_COLOR_SELECTION = '3'
+BOARD_STARTING_COLOR_SELECTION = '0'
 
 currentAction = BOARD_STARTING_COLOR_SELECTION
 
@@ -104,20 +104,25 @@ def getNeighbors(triangle):
 
     return neighbors
 
-def getColor():
-    colors = [  color_rgb(192, 68, 56),   # Dark Red
-                color_rgb(196, 148, 66),  # Yellow
-                color_rgb(51, 112, 113),  # Blue
-                color_rgb(212, 202, 175), # Paper Grey
-                color_rgb(210, 107, 63),  # Orange
-                color_rgb(36, 65, 70),    # Dark Blue
-                color_rgb(157, 51, 73),   # Pink
-                color_rgb(157, 232, 195), # Light Blue
-                color_rgb(102, 51, 0),    # Dark Grey
-                color_rgb(101, 28, 48)    # Burgundy
-            ]
+currentColor = None
 
-    return colors[int(currentAction)]
+def getColor():
+    global currentColor
+    if currentAction in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
+        colors = [  color_rgb(192, 68, 56),   # Dark Red
+                    color_rgb(196, 148, 66),  # Yellow
+                    color_rgb(51, 112, 113),  # Blue
+                    color_rgb(212, 202, 175), # Paper Grey
+                    color_rgb(210, 107, 63),  # Orange
+                    color_rgb(36, 65, 70),    # Dark Blue
+                    color_rgb(157, 51, 73),   # Pink
+                    color_rgb(157, 232, 195), # Light Blue
+                    color_rgb(102, 51, 0),    # Dark Grey
+                    color_rgb(101, 28, 48)    # Burgundy
+                ]
+        currentColor = colors[int(currentAction)]
+
+    return currentColor
 
 class Kami2Triangle:
 
@@ -183,7 +188,8 @@ class Kami2Triangle:
         return Point(x, y)
 
     def displayBelongingGroup(self):
-        self.label.setText( self.group[0] + self.group[len(self.group) - 1])
+        #self.label.setText(self.group[len(self.group) - 1])
+        self.label.setText('P1')
 
 availableConnections = []
 
