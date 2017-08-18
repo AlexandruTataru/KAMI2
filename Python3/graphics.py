@@ -274,7 +274,7 @@ class GraphWin(tk.Canvas):
         self.mouseY = None
         while self.mouseX == None or self.mouseY == None:
             self.update()
-            if self.isClosed(): raise GraphicsError("getMouse in closed window")
+            #if self.isClosed(): raise GraphicsError("getMouse in closed window")
             time.sleep(.1) # give up thread
         x,y = self.toWorld(self.mouseX, self.mouseY)
         self.mouseX = None
@@ -667,7 +667,7 @@ class Polygon(GraphicsObject):
 class Text(GraphicsObject):
     
     def __init__(self, p, text):
-        GraphicsObject.__init__(self, ["justify","fill","text","font"])
+        GraphicsObject.__init__(self, ["justify","fill","text","font", "width"])
         self.setText(text)
         self.anchor = p.clone()
         self.setFill(DEFAULT_CONFIG['outline'])

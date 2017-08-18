@@ -10,7 +10,7 @@ class ORIENTATION(Enum):
     UNKNOWN = 3
 
 # Board set-up parameters
-TRIANGLE_SIZE = 40
+TRIANGLE_SIZE = 60
 NR_TRIANGLES_HORIZONTAL = 10
 NR_TRIANGLES_VERTICAL = 14
 
@@ -18,7 +18,7 @@ TEXT_AREA_WIDTH = 200
 CHAR_WIDTH = 5
 
 move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
-BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL + TEXT_AREA_WIDTH
+BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL + TEXT_AREA_WIDTH + 1
 BOARD_SIZE_Y = TRIANGLE_SIZE * NR_TRIANGLES_VERTICAL
 FOLDING_COLOR = color_rgb(50, 50, 50)
 OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\output.txt"
@@ -67,7 +67,7 @@ scanline += 20
 addLeftAllignedText("s. Output graph", scanline)
 scanline += 20
 
-groupIdx = [0, 0, 0, 0, 0]
+groupIdx = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 BOARD_STARTING_COLOR_SELECTION = '3'
 
@@ -105,19 +105,17 @@ def getNeighbors(triangle):
     return neighbors
 
 def getColor():
-    #rand_shade = random.randrange(30, 100, 20)
-    #color = color_rgb(0, 0, 0)
-
-    colors = [  color_rgb(192, 68, 56),
-                color_rgb(196, 148, 66),
-                color_rgb(51, 112, 113),
-                color_rgb(212, 202, 175),
-                color_rgb(210, 107, 63),
-                color_rgb(36, 65, 70),
-                color_rgb(157, 51, 73),
-                color_rgb(157, 232, 195),
-                color_rgb(102, 51, 0),
-                color_rgb(101, 28, 48) ]
+    colors = [  color_rgb(192, 68, 56),   # Dark Red
+                color_rgb(196, 148, 66),  # Yellow
+                color_rgb(51, 112, 113),  # Blue
+                color_rgb(212, 202, 175), # Paper Grey
+                color_rgb(210, 107, 63),  # Orange
+                color_rgb(36, 65, 70),    # Dark Blue
+                color_rgb(157, 51, 73),   # Pink
+                color_rgb(157, 232, 195), # Light Blue
+                color_rgb(102, 51, 0),    # Dark Grey
+                color_rgb(101, 28, 48)    # Burgundy
+            ]
 
     return colors[int(currentAction)]
 
@@ -137,15 +135,20 @@ class Kami2Triangle:
         self.triangle.setOutline(FOLDING_COLOR)
         self.triangle.setWidth(1)
 
+        self.label = Text(self.getCenterPoint(), '')
+        self.label.setSize(5)
+
     def getColorGroup(self):
-        colorGroups = ['None', 'Red', 'Green', 'Blue', 'Yellow']
+        colorGroups = ['DarkRed', 'Yellow', 'Blue', 'PaperGrey', 'Orange', 'DarkBlue', 'Pink', 'LightBlue', 'DarkGrey', 'Burgundy']
         return colorGroups[int(self.color)]
 
     def draw(self, window):
         self.triangle.draw(window)
+        self.label.draw(window)
 
     def undraw(self):
         self.triangle.undraw()
+        self.label.undraw()
 
     def isPointInside(self, pt):
         b1 = sign(pt, self.p1, self.p2) < 0.0;
@@ -179,12 +182,15 @@ class Kami2Triangle:
             x = self.p1.x + 1.0/3.0 * move_along_x
         return Point(x, y)
 
+    def displayBelongingGroup(self):
+        self.label.setText( self.group[0] + self.group[len(self.group) - 1])
+
 availableConnections = []
 
 def makeConnection(group1, group2):
     connection = str(group1) + ' - ' + str(group2)
     if connection not in availableConnections:
-	    availableConnections.append(connection)
+        availableConnections.append(connection)
 
 def writeDataToFile(data):
     file = open(OUTPUT_FILE, "w")
@@ -202,6 +208,8 @@ def startToProcessTheBoard():
             while len(q) > 0:
                 currTriangle = q.pop()
                 currTriangle.group = groupId
+                currTriangle.displayBelongingGroup()
+
                 if currTriangle.hasBeenMarked == False:
                     neighbors = getNeighbors(currTriangle)
                     for neighbor in neighbors:
@@ -232,37 +240,54 @@ def drawTriangle(startingPoint, orientation):
     
     return triangle
 
-startPosY = 0
+def clearBoardAndRedrawEverything():
+    global groupIdx
+    for i in range(0, len(groupIdx)):
+        groupIdx[i] = 0
 
-headerPosX = TEXT_AREA_WIDTH
-while headerPosX <= BOARD_SIZE_X - move_along_x * 2:
-    triangles.append(drawTriangle(Point(headerPosX, startPosY - TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
-    triangles.append(drawTriangle(Point(headerPosX + move_along_x * 2, startPosY - TRIANGLE_SIZE/2), ORIENTATION.LEFT))
-    headerPosX += move_along_x * 2
+    global currentAction
+    currentAction = BOARD_STARTING_COLOR_SELECTION
 
-while startPosY <= BOARD_SIZE_Y - TRIANGLE_SIZE:
-    startPosX = move_along_x + TEXT_AREA_WIDTH
-    while startPosX <= BOARD_SIZE_X - move_along_x:
-        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT))
-        triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
-        startPosX += move_along_x * 2
-    startPosX = TEXT_AREA_WIDTH
-    while startPosX <= BOARD_SIZE_X - move_along_x * 2:
-        triangles.append(drawTriangle(Point(startPosX, startPosY + TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
-        triangles.append(drawTriangle(Point(startPosX + move_along_x * 2, startPosY + TRIANGLE_SIZE/2), ORIENTATION.LEFT))
-        startPosX += move_along_x * 2
-    startPosY += TRIANGLE_SIZE
+    for triangle in triangles:
+        triangle.undraw()
 
-while True:
-    clickedPoint = window.getMouse()
-    if currentAction == 's':
-        startToProcessTheBoard()
-    else:
-        for triangle in triangles:
-            if triangle.isPointInside(clickedPoint):
-                if currentAction == 'u':
-                    triangles.remove(triangle)
-                    triangle.undraw()
-                else:
-                    triangle.setArtisticColor(getColor())
-                    triangle.setInternalColor(currentAction)
+    startPosY = 0
+    headerPosX = TEXT_AREA_WIDTH
+    while headerPosX <= BOARD_SIZE_X - move_along_x * 2:
+        triangles.append(drawTriangle(Point(headerPosX, startPosY - TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
+        triangles.append(drawTriangle(Point(headerPosX + move_along_x * 2, startPosY - TRIANGLE_SIZE/2), ORIENTATION.LEFT))
+        headerPosX += move_along_x * 2
+
+    while startPosY <= BOARD_SIZE_Y - TRIANGLE_SIZE:
+        startPosX = move_along_x + TEXT_AREA_WIDTH
+        while startPosX <= BOARD_SIZE_X - move_along_x:
+            triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT))
+            triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
+            startPosX += move_along_x * 2
+        startPosX = TEXT_AREA_WIDTH
+        while startPosX <= BOARD_SIZE_X - move_along_x * 2:
+            triangles.append(drawTriangle(Point(startPosX, startPosY + TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
+            triangles.append(drawTriangle(Point(startPosX + move_along_x * 2, startPosY + TRIANGLE_SIZE/2), ORIENTATION.LEFT))
+            startPosX += move_along_x * 2
+        startPosY += TRIANGLE_SIZE
+
+def executionLoop():
+    while True:
+        clickedPoint = window.getMouse()
+        if currentAction == 's':
+            startToProcessTheBoard()
+        if currentAction == 'c':
+            clearBoardAndRedrawEverything()
+        else:
+            for triangle in triangles:
+                if triangle.isPointInside(clickedPoint):
+                    if currentAction == 'u':
+                        triangles.remove(triangle)
+                        triangle.undraw()
+                    else:
+                        triangle.setArtisticColor(getColor())
+                        triangle.setInternalColor(currentAction)
+
+if __name__ == "__main__":
+    clearBoardAndRedrawEverything()
+    executionLoop()
