@@ -14,16 +14,58 @@ TRIANGLE_SIZE = 40
 NR_TRIANGLES_HORIZONTAL = 10
 NR_TRIANGLES_VERTICAL = 14
 
+TEXT_AREA_WIDTH = 200
+CHAR_WIDTH = 5
+
 move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
-BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL
+BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL + TEXT_AREA_WIDTH
 BOARD_SIZE_Y = TRIANGLE_SIZE * NR_TRIANGLES_VERTICAL
 FOLDING_COLOR = color_rgb(50, 50, 50)
-OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
+OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\output.txt"
 
 window = GraphWin("KAMI2", BOARD_SIZE_X, BOARD_SIZE_Y)
 
-print('Available actions are:')
-print('1. Color red\n2. Color green\n3. Color blue\n4. Color yellow\nu. Undraw\ns. Start processing')
+def addLeftAllignedText(text, y):
+    size = len(text)
+    offset = TEXT_AREA_WIDTH/2 - size * CHAR_WIDTH
+    instruction = Text(Point(TEXT_AREA_WIDTH/2 - offset + 5, y), text)
+    instruction.setFace('courier')
+    instruction.setWidth(TEXT_AREA_WIDTH)
+    instruction.draw(window)
+
+scanline = 20
+addLeftAllignedText("Available colors:", scanline)
+scanline += 20
+addLeftAllignedText("0. Dark Red", scanline)
+scanline += 20
+addLeftAllignedText("1. Yellow", scanline)
+scanline += 20
+addLeftAllignedText("2. Blue", scanline)
+scanline += 20
+addLeftAllignedText("3. Paper Grey", scanline)
+scanline += 20
+addLeftAllignedText("4. Orange", scanline)
+scanline += 20
+addLeftAllignedText("5. Dark Blue", scanline)
+scanline += 20
+addLeftAllignedText("6. Pink", scanline)
+scanline += 20
+addLeftAllignedText("7. Light Blue", scanline)
+scanline += 20
+addLeftAllignedText("8. Dark Grey", scanline)
+scanline += 20
+addLeftAllignedText("9. Burgundy", scanline)
+scanline += 20
+addLeftAllignedText("", scanline)
+scanline += 20
+addLeftAllignedText("Available actions:", scanline)
+scanline += 20
+addLeftAllignedText("u. Undraw triangle", scanline)
+scanline += 20
+addLeftAllignedText("c. Clear drawing", scanline)
+scanline += 20
+addLeftAllignedText("s. Output graph", scanline)
+scanline += 20
 
 groupIdx = [0, 0, 0, 0, 0]
 
@@ -63,18 +105,21 @@ def getNeighbors(triangle):
     return neighbors
 
 def getColor():
-    rand_shade = random.randrange(30, 100, 20)
-    color = color_rgb(0, 0, 0)
-    if currentAction == '1':
-        color = color_rgb(255, rand_shade, rand_shade)
-    elif currentAction == '2':
-        color = color_rgb(rand_shade, 255, rand_shade)
-    elif currentAction == '3':
-        color = color_rgb(rand_shade, rand_shade, 255)
-    elif currentAction == '4':
-        color = color_rgb(255, 255, rand_shade)
+    #rand_shade = random.randrange(30, 100, 20)
+    #color = color_rgb(0, 0, 0)
 
-    return color
+    colors = [  color_rgb(192, 68, 56),
+                color_rgb(196, 148, 66),
+                color_rgb(51, 112, 113),
+                color_rgb(212, 202, 175),
+                color_rgb(210, 107, 63),
+                color_rgb(36, 65, 70),
+                color_rgb(157, 51, 73),
+                color_rgb(157, 232, 195),
+                color_rgb(102, 51, 0),
+                color_rgb(101, 28, 48) ]
+
+    return colors[int(currentAction)]
 
 class Kami2Triangle:
 
@@ -189,19 +234,19 @@ def drawTriangle(startingPoint, orientation):
 
 startPosY = 0
 
-headerPosX = 0
+headerPosX = TEXT_AREA_WIDTH
 while headerPosX <= BOARD_SIZE_X - move_along_x * 2:
     triangles.append(drawTriangle(Point(headerPosX, startPosY - TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
     triangles.append(drawTriangle(Point(headerPosX + move_along_x * 2, startPosY - TRIANGLE_SIZE/2), ORIENTATION.LEFT))
     headerPosX += move_along_x * 2
 
 while startPosY <= BOARD_SIZE_Y - TRIANGLE_SIZE:
-    startPosX = move_along_x
+    startPosX = move_along_x + TEXT_AREA_WIDTH
     while startPosX <= BOARD_SIZE_X - move_along_x:
         triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT))
         triangles.append(drawTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT))
         startPosX += move_along_x * 2
-    startPosX = 0
+    startPosX = TEXT_AREA_WIDTH
     while startPosX <= BOARD_SIZE_X - move_along_x * 2:
         triangles.append(drawTriangle(Point(startPosX, startPosY + TRIANGLE_SIZE/2), ORIENTATION.RIGHT))
         triangles.append(drawTriangle(Point(startPosX + move_along_x * 2, startPosY + TRIANGLE_SIZE/2), ORIENTATION.LEFT))
