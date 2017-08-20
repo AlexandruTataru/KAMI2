@@ -15,6 +15,13 @@ class ACTION(Enum):
     UNDRAW = 3
     PROCESS = 4
 
+class PALLETE_COLOR(Enum):
+    COLOR1 = 0
+    COLOR2 = 1
+    COLOR3 = 2
+    COLOR4 = 3
+    COLOR5 = 4
+
 # Board set-up parameters
 TRIANGLE_SIZE = 70
 COLOR_PALLETE_SIZE = TRIANGLE_SIZE
@@ -28,13 +35,6 @@ FOLDING_COLOR = color_rgb(70, 70, 70)
 OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", BOARD_SIZE_X, BOARD_SIZE_Y)
-
-class PALLETE_COLOR(Enum):
-    COLOR1 = 0
-    COLOR2 = 1
-    COLOR3 = 2
-    COLOR4 = 3
-    COLOR5 = 4
 
 colorPalletes = [ ['#dcd1bf','#74b9c1','#43717c','#8f2b40','#bc993e'],
                   ['#2f302c','#e3d0af','#418e76','#a43535','#7b7b78'],
@@ -374,6 +374,7 @@ def drawColorPalleteUI():
         zone.Draw(window)
         uiPalettes.append(zone)
         colorPalleteY += COLOR_PALLETE_SIZE * 1.5
+    uiPalettes[0].SetSelected(True, window)
 
 def drawMenuButtonsUI():
     BUTTON_WIDTH = COLOR_PALLETE_SIZE * 2 - 10
@@ -408,6 +409,12 @@ def mouseCallback(clickedPoint):
                 p.SetSelected(False, window)
             pallete.SetSelected(True, window)
 
+    for triangle in uiErasedTriangles:
+        if triangle.HasBeenTouched(clickedPoint):
+            uiErasedTriangles.remove(triangle)
+            uiTriangles.append(triangle)
+            triangle.Draw(window)
+
     for triangle in uiTriangles:
         if triangle.HasBeenTouched(clickedPoint):
             if currentAction == ACTION.UNDRAW:
@@ -428,7 +435,7 @@ def changeColorPallete(index):
 def on_press(key):
     try: k = key.char
     except: k = key.name
-    if k in ['1', '2', '3', '4', '5', '6', '7', '8']:
+    if k in ['1', '2', '3', '4', '5', '6', '7']:
         changeColorPallete(int(k))
 
 lis = keyboard.Listener(on_press=on_press)
