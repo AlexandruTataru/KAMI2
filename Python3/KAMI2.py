@@ -29,19 +29,24 @@ OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", BOARD_SIZE_X, BOARD_SIZE_Y)
 
-names = ['a',
-         'b',
-         'c',
-         'd',
-         'e'
-         ]
+class PALLETE_COLOR(Enum):
+    COLOR1 = 0
+    COLOR2 = 1
+    COLOR3 = 2
+    COLOR4 = 3
+    COLOR5 = 4
 
-colors = [  color_rgb(192, 68, 56),
-            color_rgb(196, 148, 66),
-            color_rgb(51, 112, 113),
-            color_rgb(212, 202, 175),
-            color_rgb(210, 107, 63),
-        ]
+colorPalletes = [ ['#dcd1bf','#74b9c1','#43717c','#8f2b40','#bc993e'],
+                  ['#2f302c','#e3d0af','#418e76','#a43535','#7b7b78'],
+                  ['#c2763a','#d2ae3a','#7d9637','#324826','#8bb1b3'],
+                  ['#d4d2c5','#223d61','#cda947','#59152c','#487076'],
+                  ['#42382f','#aa4c31','#83b4b0','#ac7f3f','#b4a696'],
+                  ['#1b3238','#647e46','#bfad78','#4a807c','#5d3f29'],
+                  ['#2f302c','#bc517a','#5aacb7','#c6b257','#c8c9c5'] ]
+
+names = ['a','b','c','d','e']
+
+colors = colorPalletes[0]
 
 uiTriangles = []
 uiErasedTriangles = []
@@ -52,7 +57,7 @@ availableConnections = []
 name2ColorDictionary = {}
 color2IdDictionary = {}
 
-currentColor = colors[3]
+currentColor = PALLETE_COLOR.COLOR1
 currentAction = ACTION.COLOR
 
 for idx in range(0, len(names)):
@@ -80,9 +85,8 @@ def getNeighbors(triangle):
 
     return neighbors
 
-def getColor():
-    global currentColor
-    return currentColor
+def getColorWithIndex(idx):
+    return colors[int(idx)]
 
 class Kami2Button:
     def __init__(self, p, width, height, text, action):
@@ -113,29 +117,50 @@ class Kami2Button:
         return isHor and isVer;
 
 class Kami2PalleteChooser:
-    def __init__(self, p, size, color):
+    def __init__(self, p, size, palleteColorIndex):
         self.p1 = p
         self.p2 = Point(p.x + size * 2, p.y)
         self.p3 = Point(p.x + size * 2, p.y + size * 1.5)
         self.p4 = Point(p.x, p.y + size * 1.5)
         vertices = [self.p1, self.p2, self.p3, self.p4]
         self.square = Polygon(vertices)
-        self.color = color
-        self.square.setFill(color)
+        self.colorIndex = palleteColorIndex
+        self.square.setFill(getColorWithIndex(self.colorIndex))
         self.square.setOutline(color_rgb(0, 0, 0))
         self.square.setWidth(1)
 
+        self.bookmark1 = Polygon([p, Point(p.x + size/3, p.y), Point(p.x, p.y + size/3)])
+        self.bookmark1.setOutline(color_rgb(0, 0, 0));
+        self.bookmark1.setFill('white')
+        self.bookmark1.setWidth(1)
+
+        self.bookmark2 = Polygon([Point(p.x + size/3, p.y), Point(p.x + size/3, p.y + size/3), Point(p.x, p.y + size/3)])
+        self.bookmark2.setOutline(color_rgb(0, 0, 0));
+        self.bookmark2.setFill('lightgrey')
+        self.bookmark2.setWidth(1)
+
     def Draw(self, window):
         self.square.draw(window)
+
+    def RefreshColor(self):
+        self.square.setFill(getColorWithIndex(self.colorIndex))
 
     def HasBeenTouched(self, pt):
         isHor = (pt.x >= self.p1.x and pt.x <= self.p2.x)
         isVer = (pt.y >= self.p2.y and  pt.y <= self.p3.y)
         return isHor and isVer;
 
+    def SetSelected(self, selected, window):
+        if selected == True:
+            self.bookmark1.draw(window)
+            self.bookmark2.draw(window)
+        elif selected == False:
+            self.bookmark1.undraw()
+            self.bookmark2.undraw()
+
 class Kami2Triangle:
 
-    def __init__(self, p1, p2, p3, color):
+    def __init__(self, p1, p2, p3, palleteColorIndex):
         self.group = None
         vertices = [p1, p2, p3]
         self.p1 = p1
@@ -143,20 +168,24 @@ class Kami2Triangle:
         self.p3 = p3
         self.triangle = Polygon(vertices)
         self.hasBeenMarked = False
-        self.color = color
+        self.colorIndex = palleteColorIndex
 
-        self.triangle.setFill(color) # artistic color
+        self.triangle.setFill(getColorWithIndex(self.colorIndex)) # artistic color
         self.triangle.setOutline(FOLDING_COLOR)
         self.triangle.setWidth(1)
 
         self.label = Text(self.GetCenterPoint(), '')
         self.label.setSize(5)
 
+    def SetColor(self, colorPalleteIndex):
+        self.colorIndex = colorPalleteIndex
+        self.triangle.setFill(getColorWithIndex(self.colorIndex))
+
+    def RefreshColor(self):
+        self.triangle.setFill(getColorWithIndex(self.colorIndex))
+
     def getColorGroup(self):
-        for idx in range(0, len(colors)):
-            if(colors[idx] == self.color):
-                return names[idx]
-        return None
+        return names[self.colorIndex]
 
     def Draw(self, window):
         self.triangle.draw(window)
@@ -173,12 +202,8 @@ class Kami2Triangle:
 
         return ((b1 == b2) and (b2 == b3));
 
-    def SetColor(self, color):
-        self.color = color
-        self.triangle.setFill(color)
-
     def GetColor(self):
-        return self.color
+        return getColorWithIndex(self.colorIndex)
 
     def GetOrientation(self):
         if self.p2.x > self.p1.x:
@@ -200,8 +225,8 @@ class Kami2Triangle:
         self.label.setText(self.group[0] + self.group[len(self.group) - 1])
 
     def Reset(self):
-        self.color = getColor()
-        self.triangle.setFill(self.color)
+        self.colorIndex = currentColor
+        self.triangle.setFill(getColorWithIndex(currentColor))
         
         self.label.setText('')
         self.hasBeenMarked = False
@@ -254,7 +279,7 @@ def drawTriangle(startingPoint, orientation):
         p2 = Point(startingPoint.x - move_along_x, startingPoint.y + TRIANGLE_SIZE/2)
     p3 = Point(startingPoint.x, startingPoint.y + TRIANGLE_SIZE)
 
-    triangle = Kami2Triangle(p1, p2, p3, getColor())
+    triangle = Kami2Triangle(p1, p2, p3, currentColor.value)
     triangle.Draw(window)
     
     return triangle
@@ -340,38 +365,12 @@ def setCurrentActionAsUndraw():
     global currentAction
     currentAction = ACTION.UNDRAW
 
-def executionLoop():
-    while True:
-        clickedPoint = window.getMouse()
-        for button in uiButtons:
-            if button.HasBeenTouched(clickedPoint):
-                if button.GetAction() == ACTION.CLEAR:
-                    clearBoard()
-                elif button.GetAction() == ACTION.PROCESS:
-                    startToProcessTheBoard()
-                elif button.GetAction() == ACTION.UNDRAW:
-                    setCurrentActionAsUndraw()
-        for pallete in uiPalettes:
-            if pallete.HasBeenTouched(clickedPoint):
-                global currentColor
-                currentColor = pallete.color
-                global currentAction
-                currentAction = ACTION.COLOR
-        for triangle in uiTriangles:
-            if triangle.HasBeenTouched(clickedPoint):
-                if currentAction == ACTION.UNDRAW:
-                    uiTriangles.remove(triangle)
-                    uiErasedTriangles.append(triangle)
-                    triangle.Undraw()
-                else:
-                    triangle.SetColor(getColor())
-
 def drawColorPalleteUI():
     colorPalleteX = BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2
     colorPalleteY = 0
 
     for colorIdx in range(0, len(colors)):
-        zone = Kami2PalleteChooser(Point(colorPalleteX, colorPalleteY), COLOR_PALLETE_SIZE, colors[colorIdx])
+        zone = Kami2PalleteChooser(Point(colorPalleteX, colorPalleteY), COLOR_PALLETE_SIZE, colorIdx)
         zone.Draw(window)
         uiPalettes.append(zone)
         colorPalleteY += COLOR_PALLETE_SIZE * 1.5
@@ -389,9 +388,56 @@ def drawMenuButtonsUI():
     uiButtons.append(button)
     button.Draw(window)
 
+def mouseCallback(clickedPoint):
+    for button in uiButtons:
+        if button.HasBeenTouched(clickedPoint):
+            if button.GetAction() == ACTION.CLEAR:
+                clearBoard()
+            elif button.GetAction() == ACTION.PROCESS:
+                startToProcessTheBoard()
+            elif button.GetAction() == ACTION.UNDRAW:
+                setCurrentActionAsUndraw()
+    for pallete in uiPalettes:
+        if pallete.HasBeenTouched(clickedPoint):
+            global currentColor
+            currentColor = pallete.colorIndex
+            global currentAction
+            currentAction = ACTION.COLOR
+
+            for p in uiPalettes:
+                p.SetSelected(False, window)
+            pallete.SetSelected(True, window)
+
+    for triangle in uiTriangles:
+        if triangle.HasBeenTouched(clickedPoint):
+            if currentAction == ACTION.UNDRAW:
+                uiTriangles.remove(triangle)
+                uiErasedTriangles.append(triangle)
+                triangle.Undraw()
+            else:
+                triangle.SetColor(currentColor)
+
+def changeColorPallete(index):
+    global colors
+    colors = colorPalletes[index - 1]
+    for uiPalleteChooser in uiPalettes:
+        uiPalleteChooser.RefreshColor()
+    for uiTriangle in uiTriangles:
+        uiTriangle.RefreshColor()
+
+def on_press(key):
+    try: k = key.char
+    except: k = key.name
+    if k in ['1', '2', '3', '4', '5', '6', '7', '8']:
+        changeColorPallete(int(k))
+
+lis = keyboard.Listener(on_press=on_press)
+lis.start()
+
 if __name__ == "__main__":
     drawPuzzleGuidelines()
     drawColorPalleteUI()
     drawMenuButtonsUI()
     drawBoardForFirstTime()
-    executionLoop()
+    window.setMouseHandler(mouseCallback)
+    window.mainloop()
