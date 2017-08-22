@@ -32,7 +32,7 @@ move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
 BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL + COLOR_PALLETE_SIZE * 2
 BOARD_SIZE_Y = TRIANGLE_SIZE * NR_TRIANGLES_VERTICAL
 FOLDING_COLOR = color_rgb(70, 70, 70)
-OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
+OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\output.txt"
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", BOARD_SIZE_X, BOARD_SIZE_Y)
 
@@ -52,6 +52,7 @@ uiTriangles = []
 uiErasedTriangles = []
 uiButtons = []
 uiPalettes = []
+transparencyPallete = []
 availableConnections = []
 
 name2ColorDictionary = {}
@@ -157,6 +158,9 @@ class Kami2PalleteChooser:
         elif selected == False:
             self.bookmark1.undraw()
             self.bookmark2.undraw()
+
+    def SetFill(self, fill):
+        self.square.setFill(fill)
 
 class Kami2Triangle:
 
@@ -374,7 +378,56 @@ def drawColorPalleteUI():
         zone.Draw(window)
         uiPalettes.append(zone)
         colorPalleteY += COLOR_PALLETE_SIZE * 1.5
+    zone = Kami2PalleteChooser(Point(colorPalleteX, colorPalleteY), COLOR_PALLETE_SIZE, colorIdx)
+    zone.SetFill('')
+    zone.Draw(window)
+    transparencyPallete.append(zone)
     uiPalettes[0].SetSelected(True, window)
+
+    side = TRIANGLE_SIZE / 2
+    m_a_x = move_along_x / 2
+
+    startPosX = colorPalleteX
+    startPosY = colorPalleteY
+
+    while startPosX < BOARD_SIZE_X - m_a_x - side:
+        drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+        drawGuidelineTriangle(Point(startPosX + m_a_x * 2, startPosY), ORIENTATION.LEFT)
+        startPosX += m_a_x * 2
+    drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+
+    startPosX = colorPalleteX
+    startPosY += side
+    while startPosX < BOARD_SIZE_X - m_a_x - side:
+        drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+        drawGuidelineTriangle(Point(startPosX + m_a_x * 2, startPosY), ORIENTATION.LEFT)
+        startPosX += m_a_x * 2
+    drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+
+    startPosX = colorPalleteX
+    startPosY += side
+    while startPosX < BOARD_SIZE_X - m_a_x - side:
+        drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+        drawGuidelineTriangle(Point(startPosX + m_a_x * 2, startPosY), ORIENTATION.LEFT)
+        startPosX += m_a_x * 2
+    drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.RIGHT)
+
+    startPosX = colorPalleteX + m_a_x
+    startPosY = colorPalleteY + side/2
+    while startPosX <= BOARD_SIZE_X - m_a_x - side:
+        drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT)
+        drawGuidelineTriangle(Point(startPosX + m_a_x * 2, startPosY), ORIENTATION.RIGHT)
+        startPosX += m_a_x * 2
+
+    startPosX = colorPalleteX + m_a_x
+    startPosY += side
+    while startPosX <= BOARD_SIZE_X - m_a_x - side:
+        drawGuidelineTriangle(Point(startPosX, startPosY), ORIENTATION.LEFT)
+        drawGuidelineTriangle(Point(startPosX + m_a_x * 2, startPosY), ORIENTATION.RIGHT)
+        startPosX += m_a_x * 2
+
+    
+
 
 def drawMenuButtonsUI():
     BUTTON_WIDTH = COLOR_PALLETE_SIZE * 2 - 10
@@ -385,9 +438,6 @@ def drawMenuButtonsUI():
     button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 55 - BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT, 'Clear', ACTION.CLEAR)
     uiButtons.append(button)
     button.Draw(window)
-    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 60 - BUTTON_HEIGHT * 2), BUTTON_WIDTH, BUTTON_HEIGHT, 'Undraw', ACTION.UNDRAW)
-    uiButtons.append(button)
-    button.Draw(window)
 
 def mouseCallback(clickedPoint):
     for button in uiButtons:
@@ -396,8 +446,6 @@ def mouseCallback(clickedPoint):
                 clearBoard()
             elif button.GetAction() == ACTION.PROCESS:
                 startToProcessTheBoard()
-            elif button.GetAction() == ACTION.UNDRAW:
-                setCurrentActionAsUndraw()
     for pallete in uiPalettes:
         if pallete.HasBeenTouched(clickedPoint):
             global currentColor
@@ -407,7 +455,16 @@ def mouseCallback(clickedPoint):
 
             for p in uiPalettes:
                 p.SetSelected(False, window)
+            for p in transparencyPallete:
+                p.SetSelected(False, window)
             pallete.SetSelected(True, window)
+
+    for pallete in transparencyPallete:
+        if pallete.HasBeenTouched(clickedPoint):
+            for p in uiPalettes:
+                p.SetSelected(False, window)
+            pallete.SetSelected(True, window)
+            setCurrentActionAsUndraw()
 
     for triangle in uiErasedTriangles:
         if triangle.HasBeenTouched(clickedPoint):
