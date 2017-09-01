@@ -3,6 +3,7 @@ from pynput import keyboard
 from enum import Enum
 import math
 import random
+import time
 
 class ORIENTATION(Enum):
     LEFT = 1
@@ -22,6 +23,12 @@ class PALLETE_COLOR(Enum):
     COLOR4 = 3
     COLOR5 = 4
 
+class STATE(Enum):
+    COLOR = 0
+    NORMAL = 1
+
+currentState = STATE.NORMAL
+
 # Board set-up parameters
 TRIANGLE_SIZE = 70
 COLOR_PALLETE_SIZE = TRIANGLE_SIZE
@@ -36,6 +43,27 @@ OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\output.txt"
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", BOARD_SIZE_X, BOARD_SIZE_Y)
 
+def motion(event):
+    if currentState == STATE.COLOR:
+        clickedPoint = Point(event.x, event.y)
+
+        for triangle in uiErasedTriangles:
+            if triangle.HasBeenTouched(clickedPoint) and currentAction != ACTION.UNDRAW:
+                uiErasedTriangles.remove(triangle)
+                uiTriangles.append(triangle)
+                triangle.Draw(window)
+        
+        for triangle in uiTriangles:
+            if triangle.HasBeenTouched(clickedPoint):
+                if currentAction == ACTION.UNDRAW:
+                    uiTriangles.remove(triangle)
+                    uiErasedTriangles.append(triangle)
+                    triangle.Undraw()
+                else:
+                    triangle.SetColor(currentColor)
+
+window.bind('<Motion>', motion)
+
 colorPalletes = [ ['#dcd1bf','#74b9c1','#43717c','#8f2b40','#bc993e'],
                   ['#2f302c','#e3d0af','#418e76','#a43535','#7b7b78'],
                   ['#c2763a','#d2ae3a','#7d9637','#324826','#8bb1b3'],
@@ -44,7 +72,7 @@ colorPalletes = [ ['#dcd1bf','#74b9c1','#43717c','#8f2b40','#bc993e'],
                   ['#1b3238','#647e46','#bfad78','#4a807c','#5d3f29'],
                   ['#2f302c','#bc517a','#5aacb7','#c6b257','#c8c9c5'] ]
 
-names = ['a','b','c','d','e']
+names = ['A','B','C','D','E']
 
 colors = colorPalletes[0]
 
@@ -179,7 +207,9 @@ class Kami2Triangle:
         self.triangle.setWidth(1)
 
         self.label = Text(self.GetCenterPoint(), '')
-        self.label.setSize(5)
+        self.label.setSize(14)
+        self.label.setWidth(300)
+        self.label.setFace('courier')
 
     def SetColor(self, colorPalleteIndex):
         self.colorIndex = colorPalleteIndex
@@ -226,7 +256,7 @@ class Kami2Triangle:
         return Point(x, y)
 
     def ShowGroup(self):
-        self.label.setText(self.group[0] + self.group[len(self.group) - 1])
+        self.label.setText(self.group)
 
     def Reset(self):
         self.colorIndex = currentColor
@@ -490,10 +520,16 @@ def changeColorPallete(index):
         uiTriangle.RefreshColor()
 
 def on_press(key):
+    global currentState
     try: k = key.char
     except: k = key.name
     if k in ['1', '2', '3', '4', '5', '6', '7']:
         changeColorPallete(int(k))
+    if k == 'c':
+        if currentState == STATE.COLOR:
+            currentState = STATE.NORMAL
+        elif currentState == STATE.NORMAL:
+            currentState = STATE.COLOR
 
 lis = keyboard.Listener(on_press=on_press)
 lis.start()
