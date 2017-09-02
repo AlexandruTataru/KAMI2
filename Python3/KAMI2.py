@@ -4,6 +4,8 @@ from enum import Enum
 import math
 import random
 import time
+import json
+from pprint import pprint
 
 class ORIENTATION(Enum):
     LEFT = 1
@@ -15,6 +17,9 @@ class ACTION(Enum):
     CLEAR = 2
     UNDRAW = 3
     PROCESS = 4
+    SAVE = 5
+    LOAD = 6
+    SWITCH_MODE= 7
 
 class PALLETE_COLOR(Enum):
     COLOR1 = 0
@@ -27,7 +32,12 @@ class STATE(Enum):
     COLOR = 0
     NORMAL = 1
 
+class MODE(Enum):
+    PLAY = 0
+    DEV = 1
+
 currentState = STATE.NORMAL
+currentMode = MODE.DEV
 
 # Board set-up parameters
 TRIANGLE_SIZE = 70
@@ -39,27 +49,22 @@ move_along_x = math.sqrt(3)/2.0 * TRIANGLE_SIZE
 BOARD_SIZE_X = move_along_x * NR_TRIANGLES_HORIZONTAL + COLOR_PALLETE_SIZE * 2
 BOARD_SIZE_Y = TRIANGLE_SIZE * NR_TRIANGLES_VERTICAL
 FOLDING_COLOR = color_rgb(70, 70, 70)
-OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\output.txt"
+OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\output.txt"
+SERIALIZED_OUTPUT_FILE = "C:\\Users\\atataru\\Desktop\\saved_level.txt"
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", BOARD_SIZE_X, BOARD_SIZE_Y)
 
 def motion(event):
     if currentState == STATE.COLOR:
         clickedPoint = Point(event.x, event.y)
-
-        for triangle in uiErasedTriangles:
-            if triangle.HasBeenTouched(clickedPoint) and currentAction != ACTION.UNDRAW:
-                uiErasedTriangles.remove(triangle)
-                uiTriangles.append(triangle)
-                triangle.Draw(window)
         
         for triangle in uiTriangles:
             if triangle.HasBeenTouched(clickedPoint):
                 if currentAction == ACTION.UNDRAW:
-                    uiTriangles.remove(triangle)
-                    uiErasedTriangles.append(triangle)
                     triangle.Undraw()
                 else:
+                    if not triangle.IsVisible():
+                        triangle.Draw(window)
                     triangle.SetColor(currentColor)
 
 window.bind('<Motion>', motion)
@@ -70,14 +75,14 @@ colorPalletes = [ ['#dcd1bf','#74b9c1','#43717c','#8f2b40','#bc993e'],
                   ['#d4d2c5','#223d61','#cda947','#59152c','#487076'],
                   ['#42382f','#aa4c31','#83b4b0','#ac7f3f','#b4a696'],
                   ['#1b3238','#647e46','#bfad78','#4a807c','#5d3f29'],
-                  ['#2f302c','#bc517a','#5aacb7','#c6b257','#c8c9c5'] ]
+                  ['#2f302c','#bc517a','#5aacb7','#c6b257','#c8c9c5'],
+                  ['#e3c8bd','#de9b4e','#c9536f','#832544','#311c49']]
 
 names = ['A','B','C','D','E']
 
 colors = colorPalletes[0]
 
 uiTriangles = []
-uiErasedTriangles = []
 uiButtons = []
 uiPalettes = []
 transparencyPallete = []
@@ -86,7 +91,7 @@ availableConnections = []
 name2ColorDictionary = {}
 color2IdDictionary = {}
 
-currentColor = PALLETE_COLOR.COLOR1
+currentColor = 0
 currentAction = ACTION.COLOR
 
 for idx in range(0, len(names)):
@@ -110,6 +115,7 @@ def getNeighbors(triangle):
     neighbors = []
     for neighboardTriangle in uiTriangles:
         if neighboardTriangle.HasBeenTouched(n1) or neighboardTriangle.HasBeenTouched(n2) or neighboardTriangle.HasBeenTouched(n3):
+            if neighboardTriangle.IsVisible():
                 neighbors.append(neighboardTriangle)
 
     return neighbors
@@ -144,6 +150,9 @@ class Kami2Button:
         isHor = (pt.x >= self.p1.x and pt.x <= self.p2.x)
         isVer = (pt.y >= self.p2.y and  pt.y <= self.p3.y)
         return isHor and isVer;
+
+    def SetText(self, text):
+        self.label.setText(text)
 
 class Kami2PalleteChooser:
     def __init__(self, p, size, palleteColorIndex):
@@ -194,6 +203,7 @@ class Kami2Triangle:
 
     def __init__(self, p1, p2, p3, palleteColorIndex):
         self.group = None
+        self.isVisible = True
         vertices = [p1, p2, p3]
         self.p1 = p1
         self.p2 = p2
@@ -224,10 +234,15 @@ class Kami2Triangle:
     def Draw(self, window):
         self.triangle.draw(window)
         self.label.draw(window)
+        self.isVisible = True
 
     def Undraw(self):
         self.triangle.undraw()
         self.label.undraw()
+        self.isVisible = False
+
+    def IsVisible(self):
+        return self.isVisible
 
     def HasBeenTouched(self, pt):
         b1 = sign(pt, self.p1, self.p2) < 0.0;
@@ -262,27 +277,48 @@ class Kami2Triangle:
         self.colorIndex = currentColor
         self.triangle.setFill(getColorWithIndex(currentColor))
         
+        if not self.isVisible:
+            self.isVisible = True
+            self.Draw(window)
+
         self.label.setText('')
         self.hasBeenMarked = False
+
+    def serialize(self):
+        data = {}
+        data['isVisible'] = self.isVisible
+        data['colorIndex'] = self.colorIndex
+        return json.dumps(data)
+
+    def unserialize(self, jsonContent):
+        data = json.loads(jsonContent)
+        visible = bool(data['isVisible'])
+        self.colorIndex = int(data['colorIndex'])
+        self.RefreshColor()
+        if self.isVisible:
+            if not visible:
+                self.isVisible = False
+                self.Undraw()
 
 def makeConnection(group1, group2):
     connection = str(group1) + ' - ' + str(group2)
     if connection not in availableConnections:
         availableConnections.append(connection)
 
-def writeDataToFile(data):
-    file = open(OUTPUT_FILE, "w")
+def writeDataToFile(locationOnDisk, data):
+    file = open(locationOnDisk, "w")
     file.write(data)
     file.close()
 
 def startToProcessTheBoard():
     for triangle in uiTriangles:
-        if triangle.hasBeenMarked == False:
+        if triangle.hasBeenMarked == False and triangle.IsVisible():
             internalColor = triangle.GetColor()
             color2IdDictionary[triangle.getColorGroup()] += 1
             groupId = triangle.getColorGroup() + str(color2IdDictionary[triangle.getColorGroup()])
             triangle.group = groupId
             q = [triangle]
+            qSecond = []
             while len(q) > 0:
                 currTriangle = q.pop()
                 currTriangle.group = groupId
@@ -292,15 +328,20 @@ def startToProcessTheBoard():
                     neighbors = getNeighbors(currTriangle)
                     for neighbor in neighbors:
                         if internalColor == neighbor.GetColor():
-                            q.append(neighbor)
+                            qSecond.append(neighbor)
                         elif neighbor.hasBeenMarked == True and neighbor.group != None:
                             makeConnection(currTriangle.group, neighbor.group)
                     currTriangle.hasBeenMarked = True
 
+                if len(q) == 0:
+                    for g in qSecond:
+                        q.append(g)
+                    qSecond.clear()
+
     data = ''
     for conn in availableConnections:
         data = data + conn + '\n'
-    writeDataToFile(data)
+    writeDataToFile(OUTPUT_FILE, data)
 
 def sign(p1, p2, p3):
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
@@ -313,7 +354,7 @@ def drawTriangle(startingPoint, orientation):
         p2 = Point(startingPoint.x - move_along_x, startingPoint.y + TRIANGLE_SIZE/2)
     p3 = Point(startingPoint.x, startingPoint.y + TRIANGLE_SIZE)
 
-    triangle = Kami2Triangle(p1, p2, p3, currentColor.value)
+    triangle = Kami2Triangle(p1, p2, p3, currentColor)
     triangle.Draw(window)
     
     return triangle
@@ -385,15 +426,8 @@ def clearBoard():
     global currentAction
     currentAction = ACTION.COLOR
 
-    for triangle in uiErasedTriangles:
-        uiTriangles.append(triangle)
-
     for triangle in uiTriangles:
         triangle.Reset()
-
-    for triangle in uiErasedTriangles:
-        triangle.Draw(window)
-    uiErasedTriangles.clear()
 
 def setCurrentActionAsUndraw():
     global currentAction
@@ -462,25 +496,94 @@ def drawColorPalleteUI():
 def drawMenuButtonsUI():
     BUTTON_WIDTH = COLOR_PALLETE_SIZE * 2 - 10
     BUTTON_HEIGHT = 50
-    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 50), BUTTON_WIDTH, BUTTON_HEIGHT, 'Process', ACTION.PROCESS)
+    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 50), BUTTON_WIDTH, BUTTON_HEIGHT, 'Dev Mode', ACTION.SWITCH_MODE)
     uiButtons.append(button)
     button.Draw(window)
-    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 55 - BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT, 'Clear', ACTION.CLEAR)
+    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 55 - BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT, 'Load', ACTION.LOAD)
+    uiButtons.append(button)
+    button.Draw(window)
+    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 60 - BUTTON_HEIGHT * 2), BUTTON_WIDTH, BUTTON_HEIGHT, 'Save', ACTION.SAVE)
+    uiButtons.append(button)
+    button.Draw(window)
+    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 65 - BUTTON_HEIGHT * 3), BUTTON_WIDTH, BUTTON_HEIGHT, 'Clear', ACTION.CLEAR)
+    uiButtons.append(button)
+    button.Draw(window)
+    button = Kami2Button(Point(BOARD_SIZE_X - COLOR_PALLETE_SIZE * 2 + 5, BOARD_SIZE_Y - 70 - BUTTON_HEIGHT * 4), BUTTON_WIDTH, BUTTON_HEIGHT, 'Process', ACTION.PROCESS)
     uiButtons.append(button)
     button.Draw(window)
 
+def saveTheBoard():
+    data = {}
+    cells = []
+    for cell in uiTriangles:
+        cells.append(cell.serialize())
+    data['cells'] = cells
+
+    writeDataToFile(SERIALIZED_OUTPUT_FILE, json.dumps(data))
+
+def loadTheBoard():
+    data = {}
+
+    with open(SERIALIZED_OUTPUT_FILE) as data_file:    
+        data = json.load(data_file)
+
+    for i in range(0, len(uiTriangles)):
+        uiTriangles[i].unserialize(data['cells'][i])
+
+def colorArea(startingTriangle):
+    internalColor = startingTriangle.GetColor()
+    q = [startingTriangle]
+    qSecond = []
+    while len(q) > 0:
+        currTriangle = q.pop()
+        neighbors = getNeighbors(currTriangle)
+        for neighbor in neighbors:
+             if internalColor == neighbor.GetColor():
+                qSecond.append(neighbor)
+                neighbor.SetColor(currentColor)
+        if len(q) == 0:
+            for g in qSecond:
+                q.append(g)
+            qSecond.clear()
+
 def mouseCallback(clickedPoint):
+    global currentAction
+    global currentMode
+    if currentMode == MODE.PLAY:
+        for button in uiButtons:
+            if button.HasBeenTouched(clickedPoint):
+                if button.GetAction() == ACTION.SWITCH_MODE:
+                    button.SetText('Dev Mode')
+                    currentMode = MODE.DEV
+                    return
+        for triangle in uiTriangles:
+            if triangle.HasBeenTouched(clickedPoint):
+                if currentAction == ACTION.UNDRAW:
+                    return
+                else:
+                    if not triangle.IsVisible():
+                        return
+                    colorArea(triangle)
+
+
     for button in uiButtons:
         if button.HasBeenTouched(clickedPoint):
             if button.GetAction() == ACTION.CLEAR:
                 clearBoard()
             elif button.GetAction() == ACTION.PROCESS:
                 startToProcessTheBoard()
+            elif button.GetAction() == ACTION.SAVE:
+                saveTheBoard()
+            elif button.GetAction() == ACTION.LOAD:
+                loadTheBoard()
+            elif button.GetAction() == ACTION.SWITCH_MODE:
+                button.SetText('Play Mode')
+                currentMode = MODE.PLAY
+
     for pallete in uiPalettes:
         if pallete.HasBeenTouched(clickedPoint):
             global currentColor
             currentColor = pallete.colorIndex
-            global currentAction
             currentAction = ACTION.COLOR
 
             for p in uiPalettes:
@@ -495,21 +598,17 @@ def mouseCallback(clickedPoint):
                 p.SetSelected(False, window)
             pallete.SetSelected(True, window)
             setCurrentActionAsUndraw()
-
-    for triangle in uiErasedTriangles:
-        if triangle.HasBeenTouched(clickedPoint):
-            uiErasedTriangles.remove(triangle)
-            uiTriangles.append(triangle)
-            triangle.Draw(window)
+            return
 
     for triangle in uiTriangles:
         if triangle.HasBeenTouched(clickedPoint):
             if currentAction == ACTION.UNDRAW:
-                uiTriangles.remove(triangle)
-                uiErasedTriangles.append(triangle)
                 triangle.Undraw()
             else:
+                if not triangle.IsVisible():
+                    triangle.Draw(window)
                 triangle.SetColor(currentColor)
+            return
 
 def changeColorPallete(index):
     global colors
@@ -523,7 +622,7 @@ def on_press(key):
     global currentState
     try: k = key.char
     except: k = key.name
-    if k in ['1', '2', '3', '4', '5', '6', '7']:
+    if k in ['1', '2', '3', '4', '5', '6', '7', '8']:
         changeColorPallete(int(k))
     if k == 'c':
         if currentState == STATE.COLOR:
