@@ -1,5 +1,6 @@
 from graphics import *
 from pynput import keyboard
+from threading import Thread
 from enum import Enum
 import math
 import random
@@ -91,6 +92,8 @@ availableConnections = []
 name2ColorDictionary = {}
 color2IdDictionary = {}
 
+neighbordsMap = {}
+
 currentColor = 0
 currentAction = ACTION.COLOR
 
@@ -115,7 +118,6 @@ def getNeighbors(triangle):
     neighbors = []
     for neighboardTriangle in uiTriangles:
         if neighboardTriangle.HasBeenTouched(n1) or neighboardTriangle.HasBeenTouched(n2) or neighboardTriangle.HasBeenTouched(n3):
-            if neighboardTriangle.IsVisible():
                 neighbors.append(neighboardTriangle)
 
     return neighbors
@@ -284,6 +286,9 @@ class Kami2Triangle:
         self.label.setText('')
         self.hasBeenMarked = False
 
+    def getUniqueID(self):
+        return str(self.p1.x) + str(self.p1.y) + str(self.p2.x) + str(self.p2.y) + str(self.p3.x) + str(self.p3.y)
+
     def serialize(self):
         data = {}
         data['isVisible'] = self.isVisible
@@ -325,8 +330,11 @@ def startToProcessTheBoard():
                 currTriangle.ShowGroup()
 
                 if currTriangle.hasBeenMarked == False:
-                    neighbors = getNeighbors(currTriangle)
+                    #neighbors = getNeighbors(currTriangle)
+                    neighbors = neighbordsMap[currTriangle.getUniqueID()]
                     for neighbor in neighbors:
+                        if not neighbor.IsVisible():
+                            continue
                         if internalColor == neighbor.GetColor():
                             qSecond.append(neighbor)
                         elif neighbor.hasBeenMarked == True and neighbor.group != None:
@@ -530,17 +538,21 @@ def loadTheBoard():
     for i in range(0, len(uiTriangles)):
         uiTriangles[i].unserialize(data['cells'][i])
 
-def colorArea(startingTriangle):
+def colorArea(startingTriangle, timestampColor):
     internalColor = startingTriangle.GetColor()
     q = [startingTriangle]
     qSecond = []
     while len(q) > 0:
+        time.sleep(0.01)
         currTriangle = q.pop()
-        neighbors = getNeighbors(currTriangle)
+        #neighbors = getNeighbors(currTriangle)
+        neighbors = neighbordsMap[currTriangle.getUniqueID()]
         for neighbor in neighbors:
-             if internalColor == neighbor.GetColor():
+            if not neighbor.IsVisible():
+                continue
+            if internalColor == neighbor.GetColor():
                 qSecond.append(neighbor)
-                neighbor.SetColor(currentColor)
+                neighbor.SetColor(timestampColor)
         if len(q) == 0:
             for g in qSecond:
                 q.append(g)
@@ -549,6 +561,7 @@ def colorArea(startingTriangle):
 def mouseCallback(clickedPoint):
     global currentAction
     global currentMode
+    global currentColor
     if currentMode == MODE.PLAY:
         for button in uiButtons:
             if button.HasBeenTouched(clickedPoint):
@@ -563,7 +576,8 @@ def mouseCallback(clickedPoint):
                 else:
                     if not triangle.IsVisible():
                         return
-                    colorArea(triangle)
+                    thread = Thread(target = colorArea, args = (triangle, currentColor))
+                    thread.start()
 
 
     for button in uiButtons:
@@ -582,7 +596,6 @@ def mouseCallback(clickedPoint):
 
     for pallete in uiPalettes:
         if pallete.HasBeenTouched(clickedPoint):
-            global currentColor
             currentColor = pallete.colorIndex
             currentAction = ACTION.COLOR
 
@@ -633,10 +646,15 @@ def on_press(key):
 lis = keyboard.Listener(on_press=on_press)
 lis.start()
 
+def cacheNeighbors():
+    for triangle in uiTriangles:
+        neighbordsMap[triangle.getUniqueID()] = getNeighbors(triangle)
+
 if __name__ == "__main__":
     drawPuzzleGuidelines()
     drawColorPalleteUI()
     drawMenuButtonsUI()
     drawBoardForFirstTime()
+    cacheNeighbors()
     window.setMouseHandler(mouseCallback)
     window.mainloop()
