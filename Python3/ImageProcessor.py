@@ -5,13 +5,14 @@ from tkinter import messagebox
 from graphics import *
 import math
 from enum import Enum
+import time
 
 class ORIENTATION(Enum):
     LEFT = 1
     RIGHT = 2
     UNKNOWN = 3
 
-img = cv2.imread('C:\\Users\\atataru\\Desktop\\IMG_0437.PNG', 1)
+img = cv2.imread('C:\\Users\\atataru\\Desktop\\IMG_0437.PNG', -1)
 
 IMG_SIZE_HOR = len(img[0])/2
 IMG_SIZE_VER = len(img)/2
@@ -24,13 +25,14 @@ OFFSET_X = -1
 OFFSET_Y = -2
 NR_COLORS = 5
 
-edges = cv2.Canny(resized_image, 500, 500)
-
 cv2.imwrite('C:\\Users\\atataru\\Desktop\\result.PNG', resized_image)
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", IMG_SIZE_HOR, IMG_SIZE_VER)
 image = PhotoImage(file = 'C:\\Users\\atataru\\Desktop\\result.PNG')
 window.create_image(0, 0, image = image, anchor = NW)
+
+triangles = []
+colors = []
 
 def drawTriangle(startingPoint, orientation):
     p1 = startingPoint
@@ -40,7 +42,14 @@ def drawTriangle(startingPoint, orientation):
         p2 = Point(startingPoint.x - move_along_x, startingPoint.y + TRIANGLE_SIZE/2)
     p3 = Point(startingPoint.x, startingPoint.y + TRIANGLE_SIZE)
 
-    window.create_polygon([p1.x, p1.y, p2.x, p2.y, p3.x, p3.y], outline='red', fill='', width=1)
+    #window.create_polygon([p1.x, p1.y, p2.x, p2.y, p3.x, p3.y], outline='red', fill='', width=1)
+    triangle = Polygon([p1, p2, p3])
+    triangle.setOutline('red')
+    triangle.setFill('')
+    triangle.setWidth(1)
+    triangle.draw(window)
+
+    triangles.append(triangle)
 
 BOARD_SIZE_X = IMG_SIZE_HOR
 SIZE_OF_BAR = IMG_SIZE_VER - 14 * TRIANGLE_SIZE
@@ -88,21 +97,91 @@ def drawColorMarkings():
         COLUMN_RANGE_END = sulcY + STEP_V * 3
         for column in range(int(ROW_RANGE_START), int(ROW_RANGE_END)):
             for row in range(int(COLUMN_RANGE_START), int(COLUMN_RANGE_END)):
-                averageColor[0] += resized_image[row][column][0]
+                averageColor[0] += resized_image[row][column][2]
                 averageColor[1] += resized_image[row][column][1]
-                averageColor[2] += resized_image[row][column][2]
+                averageColor[2] += resized_image[row][column][0]
                 samples += 1
 
         averageColor[0] /= samples
+        averageColor[0] = int(averageColor[0])
         averageColor[1] /= samples
+        averageColor[1] = int(averageColor[1])
         averageColor[2] /= samples
+        averageColor[2] = int(averageColor[2])
 
         print(averageColor)
+        colors.append(averageColor)
         
-        window.create_polygon([sulcX, sulcY, sulcX + COLOR_PALLETE_WIDTH, sulcY, sulcX + COLOR_PALLETE_WIDTH, IMG_SIZE_VER, sulcX, IMG_SIZE_VER], outline='yellow', fill='', width=2)
+        #window.create_polygon([sulcX, sulcY, sulcX + COLOR_PALLETE_WIDTH, sulcY, sulcX + COLOR_PALLETE_WIDTH, IMG_SIZE_VER, sulcX, IMG_SIZE_VER], outline='yellow', fill='', width=2)
+        colorPallete = Polygon([Point(sulcX, sulcY), Point(sulcX + COLOR_PALLETE_WIDTH,sulcY), Point(sulcX + COLOR_PALLETE_WIDTH,IMG_SIZE_VER), Point(sulcX,IMG_SIZE_VER)])
+        #colorPallete.setOutline('yellow')
+        colorPallete.setFill(color_rgb(averageColor[0], averageColor[1], averageColor[2]))
+        colorPallete.setWidth(1)
+        colorPallete.draw(window)
+
+        for column in range(int(ROW_RANGE_START), int(ROW_RANGE_END)):
+            for row in range(int(COLUMN_RANGE_START), int(COLUMN_RANGE_END)):
+                resized_image[row][column][0] = averageColor[0]
+                resized_image[row][column][1] = averageColor[1]
+                resized_image[row][column][2] = averageColor[2]
+
+    
+        
         sulcX += COLOR_PALLETE_WIDTH
+
+def centerFromPoints(p1, p2, p3):
+    offset = pow(p2.x,2) + pow(p2.y,2);
+    bc =   ( pow(p1.x,2) + pow(p1.y,2) - offset )/2.0
+    cd =   (offset - pow(p3.x, 2) - pow(p3.y, 2))/2.0
+    det =  (p1.x - p2.x) * (p2.y - p3.y) - (p2.x - p3.x)* (p1.y - p2.y)
+
+    idet = 1/det;
+
+    centerx =  (bc * (p2.y - p3.y) - cd * (p1.y - p2.y)) * idet
+    centery =  (cd * (p1.x - p2.x) - bc * (p2.x - p3.x)) * idet
+
+    return [int(centerx), int(centery)];
+
+def distance(c1, c2):
+    (r1,g1,b1) = c1
+    (r2,g2,b2) = c2
+    return pow(math.sqrt(r1 - r2),2) + pow((g1 - g2), 2) + pow((b1 - b2),2)
+
+def getColorCode(triangle):
+    points = triangle.getPoints()
+    centerPoint = centerFromPoints(points[0], points[1], points[2])
+    centerColor = resized_image[centerPoint[1]][centerPoint[0]]
+
+    bestMatchingColor = 0
+    bestRatio = 255
+    for colorIdx in range(0, len(colors)):
+        currColor = colors[colorIdx]
+        ratio = (abs(currColor[0] - centerColor[2]) + abs(currColor[1] - centerColor[1]) + abs(currColor[2] - centerColor[0])) / 3
+        if ratio < bestRatio:
+            bestRatio = ratio
+            bestMatchingColor = colorIdx
+
+    if bestRatio > 40:
+        return -1
+    
+    return bestMatchingColor
+
+def clasifyTriangles():
+    for triangle in triangles:
+        time.sleep(0.05)
+        colorCode = getColorCode(triangle)
+        if colorCode == -1:
+            triangle.undraw()
+        else:            
+            triangleColor = colors[colorCode]
+            triangle.setFill(color_rgb(triangleColor[0], triangleColor[1], triangleColor[2]))
+
+def mouseCallback(clickedPoint):
+    print('x: ' + str(clickedPoint.x) + ', y: ' + str(clickedPoint.y) + ' = ' + str(resized_image[clickedPoint.y][clickedPoint.x]))
 
 if __name__ == "__main__":
     drawBoardForFirstTime()
     drawColorMarkings()
+    clasifyTriangles()
+    window.setMouseHandler(mouseCallback)
     window.mainloop()
