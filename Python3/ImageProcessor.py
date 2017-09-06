@@ -6,29 +6,41 @@ from graphics import *
 import math
 from enum import Enum
 import time
+import json
 
 class ORIENTATION(Enum):
     LEFT = 1
     RIGHT = 2
     UNKNOWN = 3
 
-img = cv2.imread('C:\\Users\\atataru\\Desktop\\IMG_0437.PNG', -1)
+img = cv2.imread('C:\\Users\\alexandruflavian.ta\\Desktop\\IMG_0439.PNG', -1)
 
-IMG_SIZE_HOR = len(img[0])/2
-IMG_SIZE_VER = len(img)/2
+SERIALIZED_OUTPUT_FILE = "C:\\Users\\alexandruflavian.ta\\Desktop\\saved_level.txt"
 
-resized_image = cv2.resize(img, (int(IMG_SIZE_HOR), int(IMG_SIZE_VER))) 
+IMG_SIZE_HOR = len(img[0])
+IMG_SIZE_VER = len(img)
+
+resized_image = cv2.resize(img, (int(IMG_SIZE_HOR), int(IMG_SIZE_VER)))
+reference_music = resized_image
 
 move_along_x = IMG_SIZE_HOR/10
 TRIANGLE_SIZE = (2 * move_along_x)/math.sqrt(3)
 OFFSET_X = -1
-OFFSET_Y = -2
-NR_COLORS = 5
+OFFSET_Y = 1
+NR_COLORS = 4
 
-cv2.imwrite('C:\\Users\\atataru\\Desktop\\result.PNG', resized_image)
+BOARD_SIZE_X = IMG_SIZE_HOR
+SIZE_OF_BAR = IMG_SIZE_VER - 14 * TRIANGLE_SIZE
+BOARD_SIZE_Y = IMG_SIZE_VER - SIZE_OF_BAR
+
+FULL_COLOR_PALLE_WIDTH = IMG_SIZE_HOR - move_along_x * 4
+COLOR_PALLETE_WIDTH = FULL_COLOR_PALLE_WIDTH / NR_COLORS
+COLOR_PALLETE_HEIGHT = SIZE_OF_BAR
+
+cv2.imwrite('C:\\Users\\alexandruflavian.ta\\Desktop\\result.PNG', resized_image)
 
 window = GraphWin("KAMI 2 Puzzle Recreation Tool", IMG_SIZE_HOR, IMG_SIZE_VER)
-image = PhotoImage(file = 'C:\\Users\\atataru\\Desktop\\result.PNG')
+image = PhotoImage(file = 'C:\\Users\\alexandruflavian.ta\\Desktop\\result.PNG')
 window.create_image(0, 0, image = image, anchor = NW)
 
 triangles = []
@@ -51,10 +63,6 @@ def drawTriangle(startingPoint, orientation):
 
     triangles.append(triangle)
 
-BOARD_SIZE_X = IMG_SIZE_HOR
-SIZE_OF_BAR = IMG_SIZE_VER - 14 * TRIANGLE_SIZE
-BOARD_SIZE_Y = IMG_SIZE_VER - SIZE_OF_BAR
-
 def drawBoardForFirstTime():
     startPosY = 0
     headerPosX = 0
@@ -63,7 +71,7 @@ def drawBoardForFirstTime():
         drawTriangle(Point(headerPosX + move_along_x * 2 + OFFSET_X, startPosY - TRIANGLE_SIZE/2 + OFFSET_Y), ORIENTATION.LEFT)
         headerPosX += move_along_x * 2
 
-    while startPosY <= BOARD_SIZE_Y:
+    while startPosY <= BOARD_SIZE_Y - 1:
         startPosX = move_along_x
         while startPosX <= BOARD_SIZE_X - move_along_x + 10:
             drawTriangle(Point(startPosX + OFFSET_X, startPosY + OFFSET_Y), ORIENTATION.LEFT)
@@ -77,10 +85,6 @@ def drawBoardForFirstTime():
         startPosY += TRIANGLE_SIZE
 
 def drawColorMarkings():
-    FULL_COLOR_PALLE_WIDTH = IMG_SIZE_HOR - move_along_x * 4
-    COLOR_PALLETE_WIDTH = FULL_COLOR_PALLE_WIDTH / NR_COLORS
-    COLOR_PALLETE_HEIGHT = SIZE_OF_BAR
-
     sulcX = IMG_SIZE_HOR - FULL_COLOR_PALLE_WIDTH
     sulcY = IMG_SIZE_VER - COLOR_PALLETE_HEIGHT
     for i in range(0, NR_COLORS):
@@ -147,34 +151,85 @@ def distance(c1, c2):
     (r2,g2,b2) = c2
     return pow(math.sqrt(r1 - r2),2) + pow((g1 - g2), 2) + pow((b1 - b2),2)
 
-def getColorCode(triangle):
-    points = triangle.getPoints()
-    centerPoint = centerFromPoints(points[0], points[1], points[2])
-    centerColor = resized_image[centerPoint[1]][centerPoint[0]]
-
+def getColorCode(triangleColor):
     bestMatchingColor = 0
     bestRatio = 255
     for colorIdx in range(0, len(colors)):
         currColor = colors[colorIdx]
-        ratio = (abs(currColor[0] - centerColor[2]) + abs(currColor[1] - centerColor[1]) + abs(currColor[2] - centerColor[0])) / 3
+        #ratio = (abs(currColor[0] - triangleColor[2]) + abs(currColor[1] - triangleColor[1]) + abs(currColor[2] - triangleColor[0])) / 3
+        ratio = max(abs(currColor[0] - triangleColor[2]), abs(currColor[1] - triangleColor[1]), abs(currColor[2] - triangleColor[0]))
         if ratio < bestRatio:
             bestRatio = ratio
             bestMatchingColor = colorIdx
 
-    if bestRatio > 40:
+    if bestRatio > 60:
         return -1
     
     return bestMatchingColor
 
+def writeDataToFile(locationOnDisk, data):
+    file = open(locationOnDisk, "w")
+    file.write(data)
+    file.close()
+
 def clasifyTriangles():
-    for triangle in triangles:
-        time.sleep(0.05)
-        colorCode = getColorCode(triangle)
+    data = {}
+    cells = []
+    for triangle in triangles[:-10]:
+        data = {}
+        time.sleep(0.01)
+        points = triangle.getPoints()
+        centerPoint = centerFromPoints(points[0], points[1], points[2])
+        centerColor = resized_image[centerPoint[1]][centerPoint[0]]
+        clasifierColor = centerColor
+
+        r = int(clasifierColor[0])
+        g = int(clasifierColor[1])
+        b = int(clasifierColor[2])
+        for i in range(0, 10):
+            bottomColor = resized_image[centerPoint[1] + i][centerPoint[0]]
+            r += bottomColor[0]
+            g += bottomColor[1]
+            b += bottomColor[2]
+
+        r = int(r / 10)
+        g = int(g / 10)
+        b = int(b / 10)
+        centerColor = resized_image[centerPoint[1]][centerPoint[0]]
+        #centerColor = [r, g, b]
+        
+        colorCode = getColorCode(centerColor)
         if colorCode == -1:
             triangle.undraw()
+            data['isVisible'] = False
+            data['colorIndex'] = 0
         else:            
             triangleColor = colors[colorCode]
             triangle.setFill(color_rgb(triangleColor[0], triangleColor[1], triangleColor[2]))
+            data['isVisible'] = True
+            data['colorIndex'] = colorCode
+        cells.append(json.dumps(data))
+
+    for headerTriangle in triangles[-10:]:
+        data = {}
+        points = headerTriangle.getPoints()
+        centerPoint = centerFromPoints(points[0], points[1], points[2])
+        centerColor = resized_image[centerPoint[1] - 5][centerPoint[0]]
+        colorCode = getColorCode(centerColor)
+        if colorCode == -1:
+            headerTriangle.undraw()
+            data['isVisible'] = False
+            data['colorIndex'] = 0
+        else:            
+            triangleColor = colors[colorCode]
+            headerTriangle.setFill(color_rgb(triangleColor[0], triangleColor[1], triangleColor[2]))
+            data['isVisible'] = True
+            data['colorIndex'] = colorCode
+        cells.append(json.dumps(data))
+
+    data['cells'] = cells
+    writeDataToFile(SERIALIZED_OUTPUT_FILE, json.dumps(data))
+        
 
 def mouseCallback(clickedPoint):
     print('x: ' + str(clickedPoint.x) + ', y: ' + str(clickedPoint.y) + ' = ' + str(resized_image[clickedPoint.y][clickedPoint.x]))
@@ -183,5 +238,10 @@ if __name__ == "__main__":
     drawBoardForFirstTime()
     drawColorMarkings()
     clasifyTriangles()
+    #triangles[137].setFill('orange')
+    points = triangles[137].getPoints()
+    centerPoint = centerFromPoints(points[0], points[1], points[2])
+    centerColor = resized_image[centerPoint[1]][centerPoint[0]]
+    print('Strange triangle color is: ' + str(centerColor))
     window.setMouseHandler(mouseCallback)
     window.mainloop()
